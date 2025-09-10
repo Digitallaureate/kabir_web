@@ -1,0 +1,33 @@
+---
+interface Props {
+  fallback?: string;
+  requireAuth?: boolean;
+}
+
+const { fallback = '/auth/login', requireAuth = true } = Astro.props;
+---
+
+<!-- Content will only render if auth requirements are met -->
+<slot />
+
+<script define:vars={{ requireAuth, fallback }}>
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Dynamic import for client-side
+    const { onAuthStateChange } = await import('/src/lib/auth-client.ts');
+    // Set up auth state listener on client-side
+    const unsubscribe = onAuthStateChange((user) => {
+      // Handle auth state changes
+      if (requireAuth && !user) {
+        const redirectUrl = window.location.pathname + window.location.search;
+        window.location.href = `${fallback}?redirect=${encodeURIComponent(redirectUrl)}`;
+      } else if (!requireAuth && user) {
+        window.location.href = '/admin';
+      }
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      unsubscribe();
+    });
+  });
+</script>

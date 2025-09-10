@@ -1,0 +1,294 @@
+---
+interface Props {
+  id: string;
+  title?: string;
+  size?: 'small' | 'medium' | 'large';
+  showFooter?: boolean;
+  primaryAction?: string;
+  secondaryAction?: string;
+  closeOnBackdrop?: boolean;
+}
+
+const {
+  id,
+  title,
+  size = 'medium',
+  showFooter = true,
+  primaryAction = 'Confirm',
+  secondaryAction = 'Cancel',
+  closeOnBackdrop = true
+} = Astro.props;
+---
+
+<div id={id} class={`modal modal-${size}`} data-close-backdrop={closeOnBackdrop}>
+  <div class="modal-content">
+    <div class="modal-header">
+      {title && <h3 class="modal-title">{title}</h3>}
+      <button class="modal-close" aria-label="Close modal">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <slot />
+    </div>
+    
+    {showFooter && (
+      <div class="modal-footer">
+        <slot name="footer">
+          <button class="btn btn-secondary modal-close">{secondaryAction}</button>
+          <button class="btn btn-primary modal-confirm">{primaryAction}</button>
+        </slot>
+      </div>
+    )}
+  </div>
+</div>
+
+<script define:vars={{ id, closeOnBackdrop }}>
+  document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+
+    const closeButtons = modal.querySelectorAll('.modal-close');
+    const confirmButton = modal.querySelector('.modal-confirm');
+
+    // Close modal function
+    function closeModal() {
+      modal.classList.remove('show');
+      document.body.classList.remove('modal-open');
+      
+      // Dispatch close event
+      window.dispatchEvent(new CustomEvent('modalClosed', {
+        detail: { modalId: id }
+      }));
+    }
+
+    // Open modal function
+    function openModal() {
+      modal.classList.add('show');
+      document.body.classList.add('modal-open');
+      
+      // Focus first focusable element
+      const firstFocusable = modal.querySelector('input, button, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (firstFocusable) {
+        setTimeout(() => firstFocusable.focus(), 100);
+      }
+      
+      // Dispatch open event
+      window.dispatchEvent(new CustomEvent('modalOpened', {
+        detail: { modalId: id }
+      }));
+    }
+
+    // Close button handlers
+    closeButtons.forEach(button => {
+      button.addEventListener('click', closeModal);
+    });
+
+    // Confirm button handler
+    if (confirmButton) {
+      confirmButton.addEventListener('click', () => {
+        // Dispatch confirm event for parent to handle
+        window.dispatchEvent(new CustomEvent('modalConfirmed', {
+          detail: { modalId: id }
+        }));
+      });
+    }
+
+    // Backdrop click handler
+    if (closeOnBackdrop) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeModal();
+        }
+      });
+    }
+
+    // Escape key handler
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.classList.contains('show')) {
+        closeModal();
+      }
+    });
+
+    // Expose functions globally for this modal
+    window[`openModal_${id}`] = openModal;
+    window[`closeModal_${id}`] = closeModal;
+  });
+</script>
+
+<style>
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .modal.show {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modal.show .modal-content {
+    transform: translateY(0);
+  }
+
+  .modal-small .modal-content {
+    max-width: 400px;
+  }
+
+  .modal-medium .modal-content {
+    max-width: 600px;
+  }
+
+  .modal-large .modal-content {
+    max-width: 900px;
+  }
+
+  .modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e1e1e1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .modal-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: #666;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-close:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #333;
+  }
+
+  .modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid #e1e1e1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    flex-shrink: 0;
+  }
+
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-primary {
+    background: #4a2c0f;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #3a220c;
+  }
+
+  .btn-secondary {
+    background: #6c757d;
+    color: white;
+  }
+
+  .btn-secondary:hover {
+    background: #545b62;
+  }
+
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Global modal styles */
+  :global(body.modal-open) {
+    overflow: hidden;
+  }
+
+  @media (max-width: 768px) {
+    .modal-content {
+      width: 95%;
+      margin: 1rem;
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+      padding: 1rem;
+    }
+
+    .modal-footer {
+      flex-direction: column-reverse;
+    }
+
+    .modal-footer .btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .modal-content {
+      width: 100%;
+      height: 100%;
+      max-height: 100vh;
+      border-radius: 0;
+      margin: 0;
+    }
+  }
+</style>

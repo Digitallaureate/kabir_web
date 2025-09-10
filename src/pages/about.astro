@@ -1,0 +1,500 @@
+---
+import Layout from '../components/layout/Layout.astro';
+import Section from '../components/ui/Section.astro';
+import Grid from '../components/ui/Grid.astro';
+import Card from '../components/ui/Card.astro';
+import Testimonial from '../components/ui/Testimonial.astro';
+import Button from '../components/Button.astro';
+
+const teamMembers = [
+  {
+    name: "Vivek Bist",
+    role: "Director",
+    bio: "Bringing over two decades of logistics and international business expertise to drive end-to-end supply chain excellence",
+    imageUrl: "/vivek.jpeg"
+  },
+  {
+    name: "Sagar Choudhary",
+    role: "Director",
+    bio: "Bringing over 8 years of industry experience, currently leading the project with a strong background in historical research and documentation.",
+    imageUrl: "/sagar.JPG"
+  },
+  {
+    name: "TBD",
+    role: "Technology Lead",
+    bio: "We’re hiring! If you believe in our mission, let’s connect.",
+    imageUrl: "/vikram.jpg"
+  },
+  {
+    name: "YBD",
+    role: "Content Curator",
+    bio: "We’re hiring! If you believe in our mission, let’s connect.",
+    imageUrl: "/priya.jpg"
+  }
+];
+
+// Testimonials
+const testimonials = [
+  {
+    quote: "Project Kabir transformed my understanding of Agra's monuments. The historical context and stories they provide add so much depth to these already magnificent sites.",
+    author: "Rahul Malhotra",
+    role: "History Enthusiast"
+  },
+  {
+    quote: "As a teacher, I've found Project Kabir to be an invaluable resource for educating students about our cultural heritage in an engaging way.",
+    author: "Sunita Verma",
+    role: "History Teacher"
+  },
+  {
+    quote: "The interactive map feature made planning my visit to Agra so much easier, and the historical context enhanced my appreciation of each monument.",
+    author: "James Wilson",
+    role: "International Tourist"
+  }
+];
+---
+
+<Layout title="About Us">
+  <!-- Hero Section -->
+  <div class="about-hero">
+    <div class="container">
+      <div class="about-hero-content">
+        <h1>Our Story</h1>
+        <p class="subtitle">Connecting the past with the present through digital storytelling</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mission Section -->
+  <Section background="white" centered={true}>
+    <div class="mission-statement">
+      <h2>Our Mission</h2>
+      <p>
+        Project Kabir aims to bridge the gap between rich historical heritage and contemporary audiences by leveraging
+        technology to create immersive, educational experiences. We believe that understanding our past is essential to
+        appreciating our present and building our future.
+      </p>
+      <p>
+        Through interactive maps, curated historical content, and engaging storytelling, we strive to make cultural
+        heritage accessible to everyone—from local residents to international visitors, from students to scholars.
+      </p>
+    </div>
+  </Section>
+
+  <!-- Vision and Values -->
+  <Section background="light">
+    <div class="vision-values">
+      <div class="vision-content">
+        <div>
+          <h2>Our Vision</h2>
+          <p>
+            We envision a world where historical knowledge is democratized and made engaging through technology, where
+            cultural heritage is preserved digitally for future generations, and where every monument tells its complete
+            story to all who wish to listen.
+          </p>
+        </div>
+      </div>
+      <div class="values-content">
+        <h2>Our Values</h2>
+        <ul class="values-list">
+          <li>
+            <span class="value-icon">🏛️</span>
+            <div>
+              <h3>Preservation</h3>
+              <p>Documenting and digitally preserving our cultural heritage for future generations</p>
+            </div>
+          </li>
+          <li>
+            <span class="value-icon">🔍</span>
+            <div>
+              <h3>Accuracy</h3>
+              <p>Committing to historical accuracy and scholarly research in all our content</p>
+            </div>
+          </li>
+          <li>
+            <span class="value-icon">🌐</span>
+            <div>
+              <h3>Accessibility</h3>
+              <p>Making historical knowledge accessible to people of all backgrounds</p>
+            </div>
+          </li>
+          <li>
+            <span class="value-icon">💡</span>
+            <div>
+              <h3>Innovation</h3>
+              <p>Using technology to create engaging, interactive historical experiences</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </Section>
+
+  <!-- Video Section -->
+  <Section background="primary" centered={true}>
+    <div class="video-section">
+      <h2>Experience Project Kabir</h2>
+      <p>Watch our introductory video to learn more about our mission and how we're bringing history to life.</p>
+      
+      <div class="video-container">
+        <div class="video-placeholder">
+          <img src="/video-thumbnail.jpg" alt="Project Kabir Introduction" />
+          <button class="play-button" aria-label="Play video">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="white">
+              <path d="M8 5v14l11-7z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </Section>
+
+  <!-- Team Section -->
+  <Section title="Our Team" subtitle="Meet the passionate individuals behind Project Kabir" centered={true}>
+    <Grid columns={{ mobile: 1, tablet: 2, desktop: 4 }}>
+      {teamMembers.map((member) => (
+        <Card variant="outlined" classes="team-card">
+          <div class="team-member">
+            <div class="team-member-image">
+              <img src={member.imageUrl} alt={member.name} />
+            </div>
+            <h3 class="team-member-name">{member.name}</h3>
+            <p class="team-member-role">{member.role}</p>
+            <p class="team-member-bio">{member.bio}</p>
+          </div>
+        </Card>
+      ))}
+    </Grid>
+  </Section>
+
+  <!-- Testimonials -->
+  <Section title="What People Say" subtitle="Feedback from our users" background="light" centered={true}>
+    <Grid columns={{ mobile: 1, tablet: 1, desktop: 3 }}>
+      {testimonials.map((testimonial) => (
+        <Testimonial
+          quote={testimonial.quote}
+          author={testimonial.author}
+          role={testimonial.role}
+          variant="card"
+        />
+      ))}
+    </Grid>
+  </Section>
+
+  <!-- CTA Section -->
+  <Section background="white" centered={true}>
+    <div class="cta-section">
+      <h2>Join Us on this Journey</h2>
+      <p>
+        Ready to explore rich heritage with us? Start your historical journey through the monuments, stories, and
+        cultural significance of this magnificent city.
+      </p>
+      <div class="cta-buttons">
+        <Button text="Explore Historical Sites" href="/map" variant="primary" size="large" />
+        <Button text="Contact Us" href="/contact" variant="outline" size="large" />
+      </div>
+    </div>
+  </Section>
+</Layout>
+
+<style>
+  .about-hero {
+    background-image: url('/about-hero-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    color: white;
+    padding: 120px 0;
+    text-align: center;
+  }
+
+  .about-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+  }
+
+  .about-hero-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .about-hero h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+
+  .about-hero .subtitle {
+    font-size: 1.25rem;
+    max-width: 700px;
+    margin: 0 auto;
+    opacity: 0.9;
+  }
+
+  .mission-statement {
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .mission-statement h2 {
+    margin-bottom: 1.5rem;
+    position: relative;
+    display: inline-block;
+  }
+
+  .mission-statement h2::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 3px;
+    background-color: #c2634b;
+  }
+
+  .mission-statement p {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    margin-bottom: 1.5rem;
+  }
+
+  .vision-values {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+
+  .vision-content {
+    display: flex;
+    align-items: center;
+  }
+
+  .vision-content h2, .values-content h2 {
+    margin-bottom: 1.5rem;
+    position: relative;
+  }
+
+  .vision-content h2::after, .values-content h2::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background-color: #c2634b;
+  }
+
+  .vision-content p {
+    font-size: 1.1rem;
+    line-height: 1.7;
+  }
+
+  .values-list {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .values-list li {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .value-icon {
+    font-size: 1.75rem;
+    flex-shrink: 0;
+  }
+
+  .values-list h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+  }
+
+  .values-list p {
+    margin: 0;
+    line-height: 1.5;
+    font-size: 0.95rem;
+  }
+
+  .video-section {
+    color: white;
+    text-align: center;
+  }
+
+  .video-section h2 {
+    margin-bottom: 1rem;
+  }
+
+  .video-section p {
+    max-width: 700px;
+    margin: 0 auto 2rem;
+    opacity: 0.9;
+  }
+
+  .video-container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .video-placeholder {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  }
+
+  .video-placeholder img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .play-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(194, 99, 75, 0.8);
+    border: none;
+    border-radius: 50%;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .play-button:hover {
+    background-color: #c2634b;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+
+  .team-card {
+    height: 100%;
+  }
+
+  .team-member {
+    text-align: center;
+  }
+
+  .team-member-image {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin: 0 auto 1.5rem;
+    border: 3px solid rgba(194, 99, 75, 0.2);
+  }
+
+  .team-member-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .team-member-name {
+    font-size: 1.25rem;
+    margin: 0 0 0.25rem;
+    color: #333;
+  }
+
+  .team-member-role {
+    color: #c2634b;
+    font-weight: 500;
+    margin: 0 0 1rem;
+  }
+
+  .team-member-bio {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #555;
+  }
+
+  .cta-section {
+    max-width: 700px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .cta-section h2 {
+    margin-bottom: 1rem;
+  }
+
+  .cta-section p {
+    margin-bottom: 2rem;
+    font-size: 1.1rem;
+  }
+
+  .cta-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  @media (max-width: 768px) {
+    .about-hero {
+      padding: 80px 0;
+    }
+
+    .about-hero h1 {
+      font-size: 2.5rem;
+    }
+
+    .vision-values {
+      grid-template-columns: 1fr;
+    }
+
+    .values-list {
+      grid-template-columns: 1fr;
+    }
+
+    .play-button {
+      width: 60px;
+      height: 60px;
+    }
+
+    .cta-buttons {
+      flex-direction: column;
+      max-width: 300px;
+      margin: 0 auto;
+    }
+  }
+</style>
+
+<script>
+  // Handle video play button click
+  document.addEventListener('DOMContentLoaded', function() {
+    const playButton = document.querySelector('.play-button');
+    const videoPlaceholder = document.querySelector('.video-placeholder');
+    
+    if (playButton && videoPlaceholder) {
+      playButton.addEventListener('click', function() {
+        // Replace the placeholder with an actual video embed
+        // This is just a placeholder YouTube embed - replace with your actual video
+        const videoEmbed = `
+          <iframe 
+            width="100%" 
+            height="450" 
+            src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1" 
+            title="Project Kabir Introduction" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen
+          ></iframe>
+        `;
+        
+        videoPlaceholder.innerHTML = videoEmbed;
+      });
+    }
+  });
+</script>

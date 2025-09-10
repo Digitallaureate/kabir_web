@@ -1,0 +1,53 @@
+.map-container {
+  height: 500px;
+  width: 100%;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .map-container {
+    height: 400px;
+  }
+}
+
+.sepia-tiles {
+  filter: sepia(40%) hue-rotate(-20deg) saturate(80%);
+}
+
+.custom-marker .marker-circle {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid var(--primary-text);
+}
+
+.leaflet-popup-content-wrapper {
+  background: #f8f9fa;
+  border-radius: 6px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.leaflet-popup-tip {
+  background: #f8f9fa;
+}
+
+.leaflet-popup-content {
+  margin: 0.75rem;
+  color: var(--primary-text);
+  font-size: 0.9rem;
+}
+
+.leaflet-container a {
+  color: var(--highlight);
+}
+
+.leaflet-draw-actions a {
+  color: var(--primary-text);
+}
+
+.leaflet-draw-toolbar a {
+  background-color: #ffffff;
+  border-radius: 4px;
+}

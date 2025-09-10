@@ -1,0 +1,165 @@
+---
+// A reusable button component with various styles and configurations.
+// Usage:
+// <Button text="Click Me" href="/path" variant="primary" size="medium" fullWidth={true} classes="custom-class">
+//   <span slot="icon-left">←</span>
+//   <span slot="icon-right">→</span>
+// </Button>
+
+interface Props {
+  text: string; // The button text
+  href?: string; // Optional URL for links (renders as <a> if provided, otherwise <button>)
+  variant?: 'primary' | 'outline' | 'text' | 'secondary'; // Button style variant
+  size?: 'small' | 'medium' | 'large'; // Button size
+  fullWidth?: boolean; // Whether the button should take full width
+  classes?: string; // Additional custom classes
+  disabled?: boolean; // Whether the button is disabled
+}
+
+const { 
+  text, 
+  href, 
+  variant = 'primary', 
+  size = 'medium', 
+  fullWidth = false,
+  classes = '',
+  disabled = false,
+} = Astro.props;
+
+// Determine the element type: <a> if href is provided, otherwise <button>
+const Element = href ? 'a' : 'button';
+---
+
+<Element
+  href={href}
+  type={Element === 'button' ? 'button' : undefined}
+  role={Element === 'a' ? 'link' : 'button'}
+  aria-label={text}
+  disabled={Element === 'button' && disabled ? true : undefined}
+  class:list={[
+    'btn',
+    `btn-${variant}`,
+    `btn-${size}`,
+    fullWidth && 'btn-full',
+    disabled && 'btn-disabled',
+    classes,
+  ]}
+>
+  <slot name="icon-left" />
+  {text}
+  <slot name="icon-right" />
+</Element>
+
+<style>
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 500;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-decoration: none;
+    border: none;
+    font-family: inherit;
+    line-height: 1.5;
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  .btn-primary {
+    background-color: #c2634b;
+    color: white;
+    border: 1px solid #c2634b;
+  }
+
+  .btn-primary:hover:not(.btn-disabled) {
+    background-color: #ad5541;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(194, 99, 75, 0.2);
+  }
+
+  .btn-outline {
+    background-color: transparent;
+    border: 1px solid #c2634b;
+    color: #c2634b;
+  }
+
+  .btn-outline:hover:not(.btn-disabled) {
+    background-color: rgba(194, 99, 75, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .btn-text {
+    background-color: transparent;
+    border: none;
+    color: #c2634b;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .btn-text:hover:not(.btn-disabled) {
+    color: #ad5541;
+    text-decoration: underline;
+  }
+
+  .btn-secondary {
+    background-color: #3d5a80;
+    color: white;
+    border: 1px solid #3d5a80;
+  }
+
+  .btn-secondary:hover:not(.btn-disabled) {
+    background-color: #314866;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(61, 90, 128, 0.2);
+  }
+
+  .btn-small {
+    font-size: 14px;
+    padding: 6px 14px;
+    min-height: 32px; /* Ensure touch target size */
+  }
+
+  .btn-medium {
+    font-size: 16px;
+    padding: 10px 20px;
+    min-height: 44px; /* Ensure touch target size */
+  }
+
+  .btn-large {
+    font-size: 18px;
+    padding: 12px 24px;
+    min-height: 48px; /* Ensure touch target size */
+  }
+
+  .btn-full {
+    width: 100%;
+  }
+
+  .btn-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure minimum touch target size on mobile */
+  @media (max-width: 576px) {
+    .btn-small {
+      padding: 8px 16px;
+      min-height: 36px;
+    }
+
+    .btn-medium {
+      padding: 12px 24px;
+      min-height: 48px;
+    }
+
+    .btn-large {
+      padding: 14px 28px;
+      min-height: 52px;
+    }
+  }
+</style>

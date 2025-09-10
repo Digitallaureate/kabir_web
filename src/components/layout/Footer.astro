@@ -1,0 +1,340 @@
+---
+const year = new Date().getFullYear();
+
+// Social media links
+const socialLinks = [
+  //{ name: 'Facebook', url: '#', icon: 'facebook' },
+  { name: 'Instagram', url: 'https://www.instagram.com/kabir_genie/', icon: 'instagram' },
+  { name: 'Twitter', url: 'https://x.com/kabir_genie', icon: 'twitter' },
+  { name: 'YouTube', url: 'https://www.youtube.com/@kabir-genie', icon: 'youtube' }
+];
+
+// Footer navigation links
+const footerLinks = [
+  { name: 'Home', url: '/' },
+  { name: 'About', url: '/about' },
+  { name: 'Explore History', url: '/map' },
+  { name: 'Blog', url: '/blogs' },
+  { name: 'Contact', url: '/contact' },
+];
+
+// Legal links
+const legalLinks = [
+  { name: 'Privacy Policy', url: '/privacy-policy' },
+  { name: 'Terms & Conditions', url: '/terms-conditions' },
+];
+---
+
+<footer class="site-footer">
+  <div class="container">
+    <!-- Project Kabir Branding Section -->
+    <div class="footer-branding">
+      <h2 class="footer-logo">Project <span class="highlight">Kabir</span></h2>
+      <p class="footer-tagline">Exploring the rich cultural heritage.</p>
+      
+      <div class="social-links">
+        {socialLinks.map((link) => (
+          <a href={link.url} class="social-link" aria-label={link.name}>
+            <span class="sr-only">{link.name}</span>
+            {link.icon === 'facebook' && (
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+              </svg>
+            )}
+            {link.icon === 'instagram' && (
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+            )}
+            {link.icon === 'twitter' && (
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path>
+              </svg>
+            )}
+            {link.icon === 'youtube' && (
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+              <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+            </svg>
+          )}
+        </a>
+        ))}
+      </div>
+    </div>
+
+    <!-- Three Column Layout -->
+    <div class="footer-content">
+      <div class="footer-nav">
+        <h3 class="footer-heading">Quick Links</h3>
+        <ul class="footer-links">
+          {footerLinks.map((link) => (
+            <li><a href={link.url}>{link.name}</a></li>
+          ))}
+        </ul>
+      </div>
+      
+      <div class="footer-contact">
+        <h3 class="footer-heading">Contact Us</h3>
+        <address>
+          <p>Email: <a href="mailto:sagar@kabir-ai.com">sagar@kabir-ai.com</a></p>
+          <p>Phone: +91 91763 96060</p>
+          <p>Address: ECHOSTORY EXPERIENCES PRIVATE LIMITED, 
+            ATLF JMD EMPIRE SQUARE, MR-01 3RD FLOOR SECTOR 28, DLF QE, Gurgaon - 122002, Haryana</p>
+        </address>
+      </div>
+      
+      <div class="footer-download">
+        <h3 class="footer-heading">Download Our App</h3>
+        <p>Explore history & heritage on the go.</p>
+        <div class="app-buttons">
+          <a href="https://apps.apple.com/in/app/kabir-56/id6747632798" class="app-button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+            </svg>
+            App Store
+          </a>
+          <a href="https://play.google.com/store/apps/details?id=com.kabirai.kabirv2&pcampaignid=web_share" class="app-button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.61 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
+            </svg>
+            Google Play
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer-bottom">
+      <p class="copyright">&copy; {year} ECHOSTORY EXPERIENCES PRIVATE LIMITED. All Rights Reserved.</p>
+      <ul class="legal-links">
+        {legalLinks.map((link) => (
+          <li><a href={link.url}>{link.name}</a></li>
+        ))}
+      </ul>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    background-color: #2b2b2b;
+    color: #f5f5f5;
+    padding: 60px 0 30px;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .footer-branding {
+    text-align: center;
+    margin-bottom: 50px;
+  }
+
+  .footer-logo {
+    font-size: 32px;
+    margin: 0 0 15px;
+    font-weight: 700;
+  }
+
+  .highlight {
+    color: #c2634b;
+  }
+
+  .footer-tagline {
+    margin-bottom: 25px;
+    opacity: 0.9;
+    font-size: 16px;
+  }
+
+  .social-links {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+  }
+
+  .social-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #f5f5f5;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+  }
+
+  .social-link:hover {
+    background-color: #c2634b;
+    transform: translateY(-3px);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  .footer-content {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 50px;
+    margin-bottom: 40px;
+  }
+
+  .footer-heading {
+    font-size: 18px;
+    margin: 0 0 20px;
+    color: #fff;
+    position: relative;
+  }
+
+  .footer-heading:after {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 2px;
+    background-color: #c2634b;
+    bottom: -8px;
+    left: 0;
+  }
+
+  .footer-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .footer-links li {
+    margin-bottom: 10px;
+  }
+
+  .footer-links a, .footer-contact a {
+    color: #f5f5f5;
+    text-decoration: none;
+    opacity: 0.8;
+    transition: all 0.3s ease;
+  }
+
+  .footer-links a:hover, .footer-contact a:hover {
+    color: #c2634b;
+    opacity: 1;
+  }
+
+  address {
+    font-style: normal;
+    opacity: 0.8;
+    line-height: 1.6;
+  }
+
+  .app-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 15px;
+  }
+
+  .app-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background-color: #c2634b;
+    color: white;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    justify-content: center;
+  }
+
+  .app-button:hover {
+    background-color: #ad5541;
+    transform: translateY(-2px);
+  }
+
+  .footer-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 30px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .copyright {
+    margin: 0;
+    opacity: 0.6;
+    font-size: 14px;
+  }
+
+  .legal-links {
+    display: flex;
+    gap: 20px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .legal-links a {
+    color: #f5f5f5;
+    text-decoration: none;
+    opacity: 0.6;
+    font-size: 14px;
+    transition: opacity 0.3s ease;
+  }
+
+  .legal-links a:hover {
+    opacity: 1;
+  }
+
+  @media (max-width: 768px) {
+    .footer-content {
+      grid-template-columns: 1fr;
+      gap: 30px;
+    }
+
+    .footer-branding {
+      margin-bottom: 30px;
+    }
+
+    .footer-logo {
+      font-size: 28px;
+    }
+
+    .social-links {
+      gap: 15px;
+    }
+
+    .social-link {
+      width: 40px;
+      height: 40px;
+    }
+
+    .app-buttons {
+      flex-direction: row;
+      gap: 10px;
+    }
+
+    .app-button {
+      font-size: 12px;
+      padding: 10px 16px;
+    }
+
+    .footer-bottom {
+      flex-direction: column;
+      gap: 15px;
+      text-align: center;
+    }
+  }
+</style>

@@ -1,0 +1,985 @@
+---
+import AdminLayout from '../../../../components/layout/AdminLayout.astro';
+import { getFirestore, collection, doc, getDoc, getDocs, query, orderBy, updateDoc, serverTimestamp } from "firebase/firestore";
+import { app } from "../../../../utils/firebase";
+
+export const prerender = false;
+
+// Define types for blog data
+interface Blog {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string | object;
+  heroImage?: string;
+  author: string;
+  category: string;
+  tags?: string[];
+  status: 'draft' | 'published';
+  featured?: boolean;
+  wordCount?: number;
+  readTime?: number;
+  additionalImages?: string[];
+  seo?: {
+    title?: string;
+    description?: string;
+    keywords?: string[];
+  };
+}
+
+// Get blog ID from params
+const { id } = Astro.params;
+
+// Initialize Firestore
+const db = getFirestore(app);
+
+// Fetch blog data
+let blog: Blog | null = null;
+if (id) {
+  const blogDoc = await getDoc(doc(db, "blogs", id));
+  if (blogDoc.exists()) {
+    const blogData = blogDoc.data();
+    blog = { 
+      id: blogDoc.id, 
+      title: blogData.title || '',
+      slug: blogData.slug || '',
+      excerpt: blogData.excerpt || '',
+      content: blogData.content || '',
+      heroImage: blogData.heroImage || '',
+      author: blogData.author || '',
+      category: blogData.category || '',
+      tags: blogData.tags || [],
+      status: blogData.status as 'draft' | 'published' || 'draft',
+      featured: blogData.featured || false,
+      wordCount: blogData.wordCount || 0,
+      readTime: blogData.readTime || 0,
+      additionalImages: blogData.additionalImages || [],
+      seo: blogData.seo || {}
+    };
+    
+    // Parse JSON content if stored as string
+    if (typeof blog.content === 'string') {
+      try {
+        blog.content = JSON.parse(blog.content);
+      } catch (e) {
+        console.error("Error parsing blog content:", e);
+      }
+    }
+  }
+}
+
+// Redirect if blog not found
+if (!blog) {
+  return Astro.redirect('/admin/blogs');
+}
+
+// Fetch categories for the dropdown
+const categoriesQuery = query(collection(db, "categories"), orderBy("name"));
+const categoriesSnapshot = await getDocs(categoriesQuery);
+const categories = categoriesSnapshot.docs.map(doc => ({
+  id: doc.id,
+  name: doc.data().name
+}));
+---
+
+<AdminLayout title={`Edit Blog: ${blog.title}`} activePage="blog">
+  <div class="admin-container">
+    <div class="admin-header">
+      <div>
+        <h1>Edit Blog Post</h1>
+        <p class="header-subtitle">Edit and update your blog post</p>
+      </div>
+      <div class="header-actions">
+        <a href="/admin/blogs" class="admin-button admin-button-secondary">
+          <span class="admin-button-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+          </span>
+          Back to Blogs
+        </a>
+      </div>
+    </div>
+    
+    <form id="blog-form" class="blog-form">
+      <input type="hidden" id="blog-id" value={id}>
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h2>Blog Content</h2>
+        </div>
+        <div class="admin-card-body">
+          <div class="admin-form-group">
+            <label for="blog-title" class="admin-form-label">Title</label>
+            <input type="text" id="blog-title" class="admin-form-input" value={blog.title} required>
+          </div>
+          
+          <div class="admin-form-group">
+            <label for="blog-slug" class="admin-form-label">Slug</label>
+            <input type="text" id="blog-slug" class="admin-form-input" value={blog.slug} required>
+            <div class="form-helper">URL-friendly version of the title</div>
+          </div>
+          
+          <div class="admin-form-group">
+            <label for="blog-excerpt" class="admin-form-label">Excerpt</label>
+            <textarea id="blog-excerpt" class="admin-form-textarea" rows="3" required>{blog.excerpt}</textarea>
+            <div class="form-helper">Short summary that appears in blog listings (150-200 characters recommended)</div>
+          </div>
+          
+          <div class="admin-form-group">
+            <label class="admin-form-label">Hero Image</label>
+            <div class="image-upload-container">
+              <div class="image-preview" id="hero-image-preview">
+                {blog.heroImage ? (
+                  <img src={blog.heroImage} alt="Hero image">
+                ) : (
+                  <div class="upload-placeholder">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                      <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    <span>No image selected</span>
+                  </div>
+                )}
+              </div>
+              <div class="upload-actions">
+                <label for="hero-image-upload" class="admin-button admin-button-secondary admin-button-sm">
+                  <span class="admin-button-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="17 8 12 3 7 8"></polyline>
+                      <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                  </span>
+                  Upload Image
+                </label>
+                <input type="file" id="hero-image-upload" class="hidden-file-input" accept="image/*">
+                <input type="hidden" id="hero-image-url" value={blog.heroImage || ""}>
+                <button type="button" id="remove-hero-image" class="admin-button admin-button-danger admin-button-sm" style={blog.heroImage ? "" : "display: none;"}>
+                  <span class="admin-button-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 6h18"></path>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                  </span>
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="admin-form-group">
+            <label for="blog-content" class="admin-form-label">Content</label>
+            <div id="blog-editor-container" class="blog-editor-container"></div>
+            <textarea id="blog-content" class="hidden-textarea">{typeof blog.content === 'string' ? blog.content : JSON.stringify(blog.content)}</textarea>
+            <div class="editor-stats">
+              <span class="word-count">{blog.wordCount || 0} words</span>
+              <span class="read-time">{blog.readTime || 0} min read</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-sidebar">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>Publication Settings</h3>
+          </div>
+          <div class="admin-card-body">
+            <div class="admin-form-group">
+              <label for="blog-author" class="admin-form-label">Author</label>
+              <input type="text" id="blog-author" class="admin-form-input" value={blog.author} required>
+            </div>
+            
+            <div class="admin-form-group">
+              <label for="blog-category" class="admin-form-label">Category</label>
+              <select id="blog-category" class="admin-form-select" required>
+                <option value="">Select a category</option>
+                {categories.map((category) => (
+                  <option value={category.id} selected={blog.category === category.id}>{category.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div class="admin-form-group">
+              <label for="blog-tags" class="admin-form-label">Tags</label>
+              <input type="text" id="blog-tags" class="admin-form-input" value={blog.tags?.join(', ')}>
+              <div class="form-helper">Separate tags with commas</div>
+            </div>
+            
+            <div class="admin-form-group checkbox-group">
+              <div class="checkbox-wrapper">
+                <input type="checkbox" id="blog-featured" class="admin-form-checkbox" checked={blog.featured}>
+                <label for="blog-featured" class="checkbox-label">Featured Post</label>
+              </div>
+            </div>
+            
+            <div class="admin-form-group">
+              <label for="blog-status" class="admin-form-label">Status</label>
+              <select id="blog-status" class="admin-form-select" required>
+                <option value="draft" selected={blog.status === 'draft'}>Draft</option>
+                <option value="published" selected={blog.status === 'published'}>Published</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>SEO Settings</h3>
+          </div>
+          <div class="admin-card-body">
+            <div class="admin-form-group">
+              <label for="seo-title" class="admin-form-label">SEO Title</label>
+              <input type="text" id="seo-title" class="admin-form-input" value={blog.seo?.title || ""}>
+              <div class="form-helper">If left empty, the post title will be used</div>
+            </div>
+            
+            <div class="admin-form-group">
+              <label for="seo-description" class="admin-form-label">Meta Description</label>
+              <textarea id="seo-description" class="admin-form-textarea" rows="3">{blog.seo?.description || ""}</textarea>
+              <div class="form-helper">If left empty, the post excerpt will be used</div>
+            </div>
+            
+            <div class="admin-form-group">
+              <label for="seo-keywords" class="admin-form-label">Keywords</label>
+              <input type="text" id="seo-keywords" class="admin-form-input" value={blog.seo?.keywords?.join(', ') || ""}>
+              <div class="form-helper">Separate keywords with commas</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-actions">
+          <button type="button" id="save-draft-btn" class="admin-button admin-button-secondary">Save Draft</button>
+          <button type="submit" id="publish-btn" class="admin-button admin-button-primary">Update Post</button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Additional Images Section -->
+    <div class="admin-card additional-images-card">
+      <div class="admin-card-header">
+        <h3>Additional Images</h3>
+        <p class="header-subtitle">Upload additional images to use in your blog content</p>
+      </div>
+      <div class="admin-card-body">
+        <div class="image-gallery" id="image-gallery">
+          {blog.additionalImages?.map((imageUrl) => (
+            <div class="gallery-image" data-url={imageUrl}>
+              <img src={imageUrl} alt="Gallery image">
+              <div class="gallery-image-actions">
+                <button type="button" class="gallery-action-btn copy-url-btn" data-url={imageUrl}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+                <button type="button" class="gallery-action-btn delete-img-btn" data-url={imageUrl}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <div class="upload-image-card" id="upload-image-card">
+            <label for="additional-image-upload" class="upload-area">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>Upload Image</span>
+            </label>
+            <input type="file" id="additional-image-upload" class="hidden-file-input" accept="image/*">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .blog-form {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .hidden-textarea, 
+  .hidden-file-input {
+    display: none;
+  }
+  
+  .blog-editor-container {
+    min-height: 500px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+  }
+  
+  .editor-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-light);
+  }
+  
+  .image-upload-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .image-preview {
+    width: 100%;
+    height: 200px;
+    border: 2px dashed var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-light);
+    gap: 1rem;
+  }
+  
+  .upload-actions {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .checkbox-group {
+    margin-top: 1.5rem;
+  }
+  
+  .checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .admin-form-checkbox {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .checkbox-label {
+    font-weight: normal;
+    cursor: pointer;
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  
+  .additional-images-card {
+    margin-top: 1.5rem;
+  }
+  
+  .image-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+  
+  .upload-image-card {
+    width: 100%;
+    height: 150px;
+  }
+  
+  .upload-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    border: 2px dashed var(--border-color);
+    border-radius: 4px;
+    color: var(--text-light);
+    cursor: pointer;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+  }
+  
+  .upload-area:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+  
+  .gallery-image {
+    position: relative;
+    width: 100%;
+    height: 150px;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  
+  .gallery-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .gallery-image-actions {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  .gallery-image:hover .gallery-image-actions {
+    opacity: 1;
+  }
+  
+  .gallery-action-btn {
+    background-color: white;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: all 0.2s ease;
+  }
+  
+  .gallery-action-btn:hover {
+    transform: scale(1.1);
+  }
+  
+  .copy-url-btn:hover {
+    color: #007bff;
+  }
+  
+  .delete-img-btn:hover {
+    color: #dc3545;
+  }
+  
+  @media (max-width: 992px) {
+    .blog-form {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  import { getFirestore, doc, updateDoc, serverTimestamp } from "firebase/firestore";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+  import { app } from "../../../../utils/firebase";
+  import EditorJS from '@editorjs/editorjs';
+  import Header from '@editorjs/header';
+  import List from '@editorjs/list';
+  import ImageTool from '@editorjs/image';
+  import Quote from '@editorjs/quote';
+  import Embed from '@editorjs/embed';
+  
+  // TypeScript interface definitions
+  interface BlogData {
+    title: string;
+    slug: string;
+    excerpt: string;
+    content: string;
+    heroImage: string;
+    additionalImages: string[];
+    author: string;
+    category: string;
+    tags: string[];
+    status: string;
+    featured: boolean;
+    wordCount: number;
+    readTime: number;
+    seo: {
+      title: string;
+      description: string;
+      keywords: string[];
+    };
+    updatedAt: any;
+  }
+  
+  // Initialize Firestore and Storage
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+  
+  // Track uploaded images
+  let uploadedImages: string[] = [];
+  
+  document.addEventListener('DOMContentLoaded', async function() {
+    // Get blog ID
+    const blogIdElement = document.getElementById('blog-id') as HTMLInputElement;
+    const blogId = blogIdElement ? blogIdElement.value : '';
+    
+    // Load existing additional images
+    const galleryImages = document.querySelectorAll('.gallery-image');
+    const existingImages = Array.from(galleryImages)
+      .map(el => el.getAttribute('data-url'))
+      .filter(url => url) as string[];
+    
+    uploadedImages = [...existingImages];
+    
+    // Auto-generate slug from title
+    const titleInput = document.getElementById('blog-title') as HTMLInputElement;
+    const slugInput = document.getElementById('blog-slug') as HTMLInputElement;
+    
+    if (titleInput && slugInput) {
+      // Only auto-generate if slug is empty or matches the title-based pattern
+      let shouldAutoGenerate = true;
+      
+      titleInput.addEventListener('input', () => {
+        if (shouldAutoGenerate) {
+          slugInput.value = titleInput.value
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-');
+        }
+      });
+      
+      // If user manually edits slug, stop auto-generating
+      slugInput.addEventListener('input', () => {
+        shouldAutoGenerate = false;
+      });
+    }
+    
+    // Get blog content from hidden textarea
+    const contentTextarea = document.getElementById('blog-content') as HTMLTextAreaElement;
+    let initialContent = null;
+    
+    try {
+      if (contentTextarea) {
+        initialContent = JSON.parse(contentTextarea.value);
+      }
+    } catch (e) {
+      console.error("Error parsing initial content:", e);
+      initialContent = {
+        blocks: []
+      };
+    }
+    
+    // Initialize Editor.js
+    const editorContainer = document.getElementById('blog-editor-container');
+    if (!editorContainer) {
+      console.error("Editor container not found");
+      return;
+    }
+    
+    const editor = new EditorJS({
+      holder: 'blog-editor-container',
+      data: initialContent,
+      tools: {
+        header: {
+          class: Header as any,
+          inlineToolbar: true,
+          config: {
+            levels: [2, 3, 4],
+            defaultLevel: 2
+          }
+        },
+        list: {
+          class: List as any,
+          inlineToolbar: true
+        },
+        image: {
+          class: ImageTool,
+          config: {
+            uploader: {
+              uploadByFile: async (file: File) => {
+                try {
+                  const imageUrl = await uploadImage(file, 'content');
+                  return {
+                    success: 1,
+                    file: {
+                      url: imageUrl
+                    }
+                  };
+                } catch (error) {
+                  console.error("Error uploading image:", error);
+                  return {
+                    success: 0,
+                    file: {
+                      url: null
+                    }
+                  };
+                }
+              }
+            }
+          }
+        },
+        quote: {
+          class: Quote,
+          inlineToolbar: true
+        },
+        embed: Embed as any
+      },
+      onChange: () => {
+        updateWordCount();
+      }
+    });
+    
+    // Word count and read time calculator
+    const wordCountElement = document.querySelector('.word-count');
+    const readTimeElement = document.querySelector('.read-time');
+    
+    async function updateWordCount() {
+      try {
+        const data = await editor.save();
+        const content = data.blocks.map(block => {
+          if (block.type === 'paragraph' || block.type === 'header') {
+            return block.data.text;
+          }
+          return '';
+        }).join(' ');
+        
+        const wordCount = content.trim().split(/\s+/).length;
+        const readTime = Math.ceil(wordCount / 200); // Assuming 200 words per minute
+        
+        if (wordCountElement) {
+          wordCountElement.textContent = `${wordCount} words`;
+        }
+        
+        if (readTimeElement) {
+          readTimeElement.textContent = `${readTime} min read`;
+        }
+        
+        return wordCount;
+      } catch (error) {
+        console.error("Error calculating word count:", error);
+        return 0;
+      }
+    }
+    
+    // Hero image upload handling
+    const heroImageUpload = document.getElementById('hero-image-upload') as HTMLInputElement;
+    const heroImagePreview = document.getElementById('hero-image-preview');
+    const heroImageUrl = document.getElementById('hero-image-url') as HTMLInputElement;
+    const removeHeroImageBtn = document.getElementById('remove-hero-image');
+    
+    if (heroImageUpload) {
+      heroImageUpload.addEventListener('change', async (e) => {
+        const target = e.target as HTMLInputElement;
+        const file = target.files ? target.files[0] : null;
+        if (!file) return;
+        
+        try {
+          const imageUrl = await uploadImage(file, 'hero');
+          
+          // Update preview
+          if (heroImagePreview) {
+            heroImagePreview.innerHTML = `<img src="${imageUrl}" alt="Hero image">`;
+          }
+          
+          if (heroImageUrl) {
+            heroImageUrl.value = imageUrl;
+          }
+          
+          if (removeHeroImageBtn) {
+            removeHeroImageBtn.style.display = 'flex';
+          }
+        } catch (error) {
+          console.error("Error uploading hero image:", error);
+          alert("Error uploading image. Please try again.");
+        }
+      });
+    }
+    
+    if (removeHeroImageBtn) {
+      removeHeroImageBtn.addEventListener('click', () => {
+        if (heroImagePreview) {
+          heroImagePreview.innerHTML = `
+            <div class="upload-placeholder">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+              </svg>
+              <span>No image selected</span>
+            </div>
+          `;
+        }
+        
+        if (heroImageUrl) {
+          heroImageUrl.value = '';
+        }
+        
+        if (removeHeroImageBtn) {
+          removeHeroImageBtn.style.display = 'none';
+        }
+      });
+    }
+    
+    // Additional images handling
+    const additionalImageUpload = document.getElementById('additional-image-upload') as HTMLInputElement;
+    const imageGallery = document.getElementById('image-gallery');
+    
+    // Add event listeners to existing gallery images
+    document.querySelectorAll('.gallery-image').forEach(image => {
+      const copyButton = image.querySelector('.copy-url-btn');
+      const deleteButton = image.querySelector('.delete-img-btn');
+      const imageUrl = image.getAttribute('data-url') || '';
+      
+      if (copyButton) {
+        copyButton.addEventListener('click', () => {
+          const textarea = document.createElement('textarea');
+          textarea.value = imageUrl;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          alert('Image URL copied to clipboard');
+        });
+      }
+      
+      if (deleteButton && imageGallery) {
+        deleteButton.addEventListener('click', () => {
+          // Remove from DOM
+          imageGallery.removeChild(image);
+          
+          // Remove from uploaded images list
+          const index = uploadedImages.indexOf(imageUrl);
+          if (index > -1) {
+            uploadedImages.splice(index, 1);
+          }
+        });
+      }
+    });
+    
+    if (additionalImageUpload) {
+      additionalImageUpload.addEventListener('change', async (e) => {
+        const target = e.target as HTMLInputElement;
+        const file = target.files ? target.files[0] : null;
+        if (!file) return;
+        
+        try {
+          const imageUrl = await uploadImage(file, 'additional');
+          addImageToGallery(imageUrl);
+        } catch (error) {
+          console.error("Error uploading additional image:", error);
+          alert("Error uploading image. Please try again.");
+        }
+      });
+    }
+    
+    function addImageToGallery(imageUrl: string) {
+      if (!imageGallery) return;
+      
+      const galleryImage = document.createElement('div');
+      galleryImage.className = 'gallery-image';
+      galleryImage.setAttribute('data-url', imageUrl);
+      galleryImage.innerHTML = `
+        <img src="${imageUrl}" alt="Gallery image">
+        <div class="gallery-image-actions">
+          <button type="button" class="gallery-action-btn copy-url-btn" data-url="${imageUrl}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+          <button type="button" class="gallery-action-btn delete-img-btn" data-url="${imageUrl}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      `;
+      
+      // Insert before the upload card
+      const uploadCard = document.getElementById('upload-image-card');
+      if (uploadCard && imageGallery) {
+        imageGallery.insertBefore(galleryImage, uploadCard);
+      }
+      
+      // Add event listeners to buttons
+      const copyButton = galleryImage.querySelector('.copy-url-btn');
+      const deleteButton = galleryImage.querySelector('.delete-img-btn');
+      
+      if (copyButton) {
+        copyButton.addEventListener('click', () => {
+          const textarea = document.createElement('textarea');
+          textarea.value = imageUrl;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          alert('Image URL copied to clipboard');
+        });
+      }
+      
+      if (deleteButton) {
+        deleteButton.addEventListener('click', () => {
+          // Remove from DOM
+          if (imageGallery) {
+            imageGallery.removeChild(galleryImage);
+          }
+          
+          // Remove from uploaded images list
+          const index = uploadedImages.indexOf(imageUrl);
+          if (index > -1) {
+            uploadedImages.splice(index, 1);
+          }
+        });
+      }
+      
+      // Add to uploaded images list
+      uploadedImages.push(imageUrl);
+    }
+    
+    // Helper function to upload image to Firebase Storage
+    async function uploadImage(file: File, folder: string): Promise<string> {
+      const timestamp = Date.now();
+      const fileName = `${timestamp}_${file.name.replace(/\s+/g, '_')}`;
+      const storageRef = ref(storage, `blogs/${folder}/${fileName}`);
+      
+      await uploadBytes(storageRef, file);
+      return await getDownloadURL(storageRef);
+    }
+    
+    // Form submission handling
+    const blogForm = document.getElementById('blog-form') as HTMLFormElement;
+    const saveDraftBtn = document.getElementById('save-draft-btn');
+    const publishBtn = document.getElementById('publish-btn');
+    
+    // Handle Save Draft button
+    if (saveDraftBtn) {
+      saveDraftBtn.addEventListener('click', async () => {
+        // Set status to draft and submit form
+        const statusSelect = document.getElementById('blog-status') as HTMLSelectElement;
+        if (statusSelect) {
+          statusSelect.value = 'draft';
+        }
+        await savePost();
+      });
+    }
+    
+    // Handle form submission
+    if (blogForm) {
+      blogForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await savePost();
+      });
+    }
+    
+    // Save post function
+    async function savePost() {
+      try {
+        // Validate form
+        const blogIdElement = document.getElementById('blog-id') as HTMLInputElement;
+        const titleElement = document.getElementById('blog-title') as HTMLInputElement;
+        const slugElement = document.getElementById('blog-slug') as HTMLInputElement;
+        const excerptElement = document.getElementById('blog-excerpt') as HTMLTextAreaElement;
+        const heroImageUrlElement = document.getElementById('hero-image-url') as HTMLInputElement;
+        const authorElement = document.getElementById('blog-author') as HTMLInputElement;
+        const categoryElement = document.getElementById('blog-category') as HTMLSelectElement;
+        const statusElement = document.getElementById('blog-status') as HTMLSelectElement;
+        
+        if (!blogIdElement || !titleElement || !slugElement || !excerptElement || !authorElement || !categoryElement || !statusElement) {
+          console.error("Required form elements not found");
+          return;
+        }
+        
+        const blogId = blogIdElement.value;
+        const title = titleElement.value;
+        const slug = slugElement.value;
+        const excerpt = excerptElement.value;
+        const heroImageUrl = heroImageUrlElement ? heroImageUrlElement.value : '';
+        const author = authorElement.value;
+        const category = categoryElement.value;
+        const status = statusElement.value;
+        
+        if (!title || !slug || !excerpt || !author || !category) {
+          alert('Please fill in all required fields');
+          return;
+        }
+        
+        // Get content from Editor.js
+        const editorData = await editor.save();
+        const contentElement = document.getElementById('blog-content') as HTMLTextAreaElement;
+        if (contentElement) {
+          contentElement.value = JSON.stringify(editorData);
+        }
+        
+        // Calculate word count
+        const wordCount = await updateWordCount();
+        
+        // Prepare tags
+        const tagInputElement = document.getElementById('blog-tags') as HTMLInputElement;
+        const tagInput = tagInputElement ? tagInputElement.value : '';
+        const tags = tagInput.split(',').map(tag => tag.trim()).filter(tag => tag);
+        
+        // Prepare SEO data
+        const seoTitleElement = document.getElementById('seo-title') as HTMLInputElement;
+        const seoDescriptionElement = document.getElementById('seo-description') as HTMLTextAreaElement;
+        const seoKeywordsElement = document.getElementById('seo-keywords') as HTMLInputElement;
+        
+        const seoTitle = seoTitleElement ? seoTitleElement.value || title : title;
+        const seoDescription = seoDescriptionElement ? seoDescriptionElement.value || excerpt : excerpt;
+        const seoKeywords = seoKeywordsElement ? seoKeywordsElement.value : '';
+        const seoKeywordsArray = seoKeywords.split(',').map(keyword => keyword.trim()).filter(keyword => keyword);
+        
+        // Featured status
+        const featuredElement = document.getElementById('blog-featured') as HTMLInputElement;
+        const featured = featuredElement ? featuredElement.checked : false;
+        
+        // Prepare blog data
+        const blogData: BlogData = {
+          title,
+          slug,
+          excerpt,
+          content: contentElement ? contentElement.value : JSON.stringify(editorData),
+          heroImage: heroImageUrl,
+          additionalImages: uploadedImages,
+          author,
+          category,
+          tags,
+          status,
+          featured,
+          wordCount,
+          readTime: Math.ceil(wordCount / 200),
+          seo: {
+            title: seoTitle,
+            description: seoDescription,
+            keywords: seoKeywordsArray
+          },
+          updatedAt: serverTimestamp()
+        };
+        
+        // Update in Firestore
+        await updateDoc(doc(db, "blogs", blogId), { ...blogData });
+        
+        // Redirect to blog list
+        alert('Blog post updated successfully!');
+        window.location.href = '/admin/blogs';
+      } catch (error) {
+        console.error("Error updating blog post:", error);
+        alert("Error updating blog post. Please try again.");
+      }
+    }
+  });

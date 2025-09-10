@@ -1,0 +1,75 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Contact submissions - allow all operations
+    match /contactSubmissions/{document=**} {
+      allow read, write: if true;
+    }
+
+    // Contacts - allow all operations
+    match /contacts/{document=**} {
+      allow read, write: if true;
+    }
+
+    // Blog posts - allow all operations
+    match /blogPosts/{document=**} {
+      allow read, write: if true;
+    }
+
+    // Categories - read public, write authenticated
+    match /categories/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Monuments - read public, write authenticated
+    match /monuments/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Routes - read public, write authenticated
+    match /routes/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Tours - read public, write authenticated
+    match /tours/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Blogs - read public, write authenticated
+    match /blogs/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Tags - read public, write authenticated
+    match /tags/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Cities - read public, write authenticated
+    match /cities/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Submonuments - read public, write authenticated
+    match /submonuments/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // For development - allow all operations temporarily
+    // Remove this rule in production and enable proper auth
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

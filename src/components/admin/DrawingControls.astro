@@ -1,0 +1,74 @@
+---
+interface Props {
+  onToggleDrawing?: (isDrawing: boolean) => void;
+}
+
+const { onToggleDrawing } = Astro.props;
+---
+
+<div class="drawing-controls">
+  <button class="control-btn" id="toggle-drawing-btn">
+    Toggle Drawing
+  </button>
+  <span class="map-info">
+    Click to add points • Drawing: <span id="drawing-status">OFF</span>
+  </span>
+</div>
+
+<style>
+  .drawing-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .control-btn {
+    padding: 0.5rem 1rem;
+    background: #e2e8f0;
+    border: 2px solid #4a5568;
+    border-radius: 8px;
+    color: #4a5568;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+
+  .control-btn:hover {
+    background: #4a5568;
+    color: #ffffff;
+  }
+
+  .map-info {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    color: #4a5568;
+    opacity: 0.8;
+  }
+
+  #drawing-status {
+    font-weight: bold;
+    color: #4a5568;
+  }
+</style>
+
+<script>
+  let isDrawingMode = false;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const drawingBtn = document.getElementById('toggle-drawing-btn');
+    const statusEl = document.getElementById('drawing-status');
+
+    if (drawingBtn && statusEl) {
+      drawingBtn.addEventListener('click', () => {
+        isDrawingMode = !isDrawingMode;
+        statusEl.textContent = isDrawingMode ? 'ON' : 'OFF';
+        drawingBtn.textContent = isDrawingMode ? 'Stop Drawing' : 'Toggle Drawing';
+        window.dispatchEvent(new CustomEvent('toggleDrawing', { detail: isDrawingMode }));
+      });
+    }
+  });
+</script>

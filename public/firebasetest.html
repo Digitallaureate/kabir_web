@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Debug Tool - Enhanced</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        
+        .alert.error {
+            background-color: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        
+        .alert.warning {
+            background-color: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+        
+        .alert.info {
+            background-color: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .section h2 {
+            color: #c2634b;
+            margin-top: 0;
+        }
+        
+        .config-form {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        
+        input {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #c2634b;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #c2634b, #d4776b);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .output {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .error {
+            color: #ff4444;
+        }
+        
+        .success {
+            color: #44ff44;
+        }
+        
+        .warning {
+            color: #ffaa00;
+        }
+        
+        .test-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .solution-box {
+            background: #e8f5e8;
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .solution-box h3 {
+            color: #2e7d32;
+            margin-top: 0;
+        }
+        
+        .solution-box ol {
+            margin: 10px 0;
+        }
+        
+        .solution-box li {
+            margin: 8px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .test-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Firebase Configuration Debugger - Enhanced</h1>
+        
+        <div id="refererAlert" class="alert error" style="display: none;">
+            <h3>🚨 Referer Error Detected!</h3>
+            <p>The "requests-from-referer-null-are-blocked" error means your Firebase project is not properly configured for your current domain/localhost.</p>
+        </div>
+        
+        <div class="section">
+            <h2>Environment Check</h2>
+            <button onclick="checkEnvironment()">Check Current Environment</button>
+            <div class="output" id="environmentOutput"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Step 1: Enter Your Firebase Configuration</h2>
+            <div class="config-form">
+                <div class="form-group">
+                    <label for="apiKey">API Key</label>
+                    <input type="text" id="apiKey" placeholder="AIzaSyD..." />
+                </div>
+                <div class="form-group">
+                    <label for="authDomain">Auth Domain</label>
+                    <input type="text" id="authDomain" placeholder="your-project.firebaseapp.com" />
+                </div>
+                <div class="form-group">
+                    <label for="projectId">Project ID</label>
+                    <input type="text" id="projectId" placeholder="your-project-id" />
+                </div>
+                <div class="form-group">
+                    <label for="storageBucket">Storage Bucket</label>
+                    <input type="text" id="storageBucket" placeholder="your-project.appspot.com" />
+                </div>
+                <div class="form-group">
+                    <label for="messagingSenderId">Messaging Sender ID</label>
+                    <input type="text" id="messagingSenderId" placeholder="123456789" />
+                </div>
+                <div class="form-group">
+                    <label for="appId">App ID</label>
+                    <input type="text" id="appId" placeholder="1:123456789:web:abcdef..." />
+                </div>
+                <button onclick="initializeFirebase()">Initialize & Test Firebase</button>
+            </div>
+            <div class="output" id="configOutput"></div>
+            
+            <div id="solutionBox" style="display: none;" class="solution-box">
+                <h3>🔧 Solutions for Referer Error:</h3>
+                <ol>
+                    <li><strong>Firebase Console:</strong> Go to Authentication → Settings → Authorized domains and add 'localhost'</li>
+                    <li><strong>Google Cloud Console:</strong> Go to APIs & Services → Credentials → Your API Key → Edit → Application restrictions → Add 'localhost/*' to HTTP referrers</li>
+                    <li><strong>Local Server:</strong> Instead of opening HTML directly, serve it with: <code>python -m http.server 8000</code></li>
+                    <li><strong>Wait:</strong> Changes can take 5-10 minutes to propagate</li>
+                </ol>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Step 2: Test Authentication</h2>
+            <div class="test-section">
+                <div>
+                    <h3>Create Test User</h3>
+                    <div class="form-group">
+                        <label for="testEmail">Email</label>
+                        <input type="email" id="testEmail" placeholder="test@example.com" />
+                    </div>
+                    <div class="form-group">
+                        <label for="testPassword">Password</label>
+                        <input type="password" id="testPassword" placeholder="minimum 6 characters" />
+                    </div>
+                    <button onclick="testRegister()" id="registerBtn">Register Test User</button>
+                </div>
+                
+                <div>
+                    <h3>Login Test User</h3>
+                    <div class="form-group">
+                        <label for="loginEmail">Email</label>
+                        <input type="email" id="loginEmail" placeholder="test@example.com" />
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" placeholder="password" />
+                    </div>
+                    <button onclick="testLogin()" id="loginBtn">Test Login</button>
+                </div>
+            </div>
+            <div class="output" id="authOutput"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Step 3: Comprehensive Diagnostics</h2>
+            <button onclick="runDiagnostics()">Run Full Diagnostics</button>
+            <div class="output" id="diagnosticsOutput"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getAuth, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword,
+            onAuthStateChanged 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        let app = null;
+        let auth = null;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+            return `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+        }
+
+        window.checkEnvironment = function() {
+            const output = document.getElementById('environmentOutput');
+            output.innerHTML = log('Checking environment...', 'info');
+            
+            // Check protocol
+            const protocol = window.location.protocol;
+            const hostname = window.location.hostname;
+            const port = window.location.port;
+            const origin = window.location.origin;
+            
+            output.innerHTML += log(`Protocol: ${protocol}`, protocol === 'https:' ? 'success' : 'warning');
+            output.innerHTML += log(`Hostname: ${hostname}`, 'info');
+            output.innerHTML += log(`Port: ${port || 'default'}`, 'info');
+            output.innerHTML += log(`Origin: ${origin}`, 'info');
+            
+            // Check referer
+            const referer = document.referrer;
+            output.innerHTML += log(`Referer: ${referer || 'null/empty'}`, referer ? 'success' : 'warning');
+            
+            // Recommendations
+            if (protocol === 'file:') {
+                output.innerHTML += log('⚠️ Running from file:// protocol - this can cause referer issues!', 'warning');
+                output.innerHTML += log('Recommendation: Serve from localhost using a local server', 'warning');
+            }
+            
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                output.innerHTML += log('✅ Running on localhost - make sure this is added to Firebase authorized domains', 'info');
+            }
+            
+            // Check if we can make a basic fetch request
+            fetch('https://www.googleapis.com/identitytoolkit/v3/relyingparty/getProjectConfig?key=test')
+                .then(response => {
+                    output.innerHTML += log(`Network test: ${response.status} ${response.statusText}`, 'info');
+                })
+                .catch(error => {
+                    output.innerHTML += log(`Network test failed: ${error.message}`, 'error');
+                });
+        };
+
+        window.initializeFirebase = function() {
+            try {
+                const configOutput = document.getElementById('configOutput');
+                configOutput.innerHTML = log('Initializing Firebase...', 'info');
+
+                const firebaseConfig = {
+                    apiKey: document.getElementById('apiKey').value,
+                    authDomain: document.getElementById('authDomain').value,
+                    projectId: document.getElementById('projectId').value,
+                    storageBucket: document.getElementById('storageBucket').value,
+                    messagingSenderId: document.getElementById('messagingSenderId').value,
+                    appId: document.getElementById('appId').value
+                };
+
+                // Validate required fields
+                const required = ['apiKey', 'authDomain', 'projectId'];
+                const missing = required.filter(key => !firebaseConfig[key]);
+                
+                if (missing.length > 0) {
+                    configOutput.innerHTML += log(`Missing required fields: ${missing.join(', ')}`, 'error');
+                    return;
+                }
+
+                configOutput.innerHTML += log('Configuration looks valid. Attempting to initialize...', 'info');
+                configOutput.innerHTML += log(`Project ID: ${firebaseConfig.projectId}`, 'info');
+                configOutput.innerHTML += log(`Auth Domain: ${firebaseConfig.authDomain}`, 'info');
+
+                // Initialize Firebase
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+
+                configOutput.innerHTML += log('✅ Firebase initialized successfully!', 'success');
+
+                // Test auth state listener
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        configOutput.innerHTML += log(`Auth state: User logged in (${user.email})`, 'success');
+                    } else {
+                        configOutput.innerHTML += log('Auth state: No user logged in', 'info');
+                    }
+                }, (error) => {
+                    configOutput.innerHTML += log(`Auth state error: ${error.message}`, 'error');
+                    handleRefererError(error);
+                });
+
+                // Enable auth test buttons
+                document.getElementById('registerBtn').disabled = false;
+                document.getElementById('loginBtn').disabled = false;
+
+            } catch (error) {
+                const configOutput = document.getElementById('configOutput');
+                configOutput.innerHTML += log(`❌ Firebase initialization failed: ${error.message}`, 'error');
+                configOutput.innerHTML += log(`Error code: ${error.code}`, 'error');
+                console.error('Firebase init error:', error);
+                handleRefererError(error);
+            }
+        };
+
+        function handleRefererError(error) {
+            if (error.code === 'auth/requests-from-referer-null-are-blocked' || 
+                error.message.includes('referer') || 
+                error.message.includes('blocked')) {
+                
+                document.getElementById('refererAlert').style.display = 'block';
+                document.getElementById('solutionBox').style.display = 'block';
+            }
+        }
+
+        window.testRegister = async function() {
+            if (!auth) {
+                alert('Please initialize Firebase first');
+                return;
+            }
+
+            const authOutput = document.getElementById('authOutput');
+            const email = document.getElementById('testEmail').value;
+            const password = document.getElementById('testPassword').value;
+
+            if (!email || !password) {
+                authOutput.innerHTML += log('Please enter both email and password', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                authOutput.innerHTML += log('Password must be at least 6 characters', 'error');
+                return;
+            }
+
+            try {
+                authOutput.innerHTML += log(`Attempting to register user: ${email}`, 'info');
+                document.getElementById('registerBtn').disabled = true;
+
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                authOutput.innerHTML += log(`✅ User registered successfully!`, 'success');
+                authOutput.innerHTML += log(`User ID: ${userCredential.user.uid}`, 'success');
+                authOutput.innerHTML += log(`Email verified: ${userCredential.user.emailVerified}`, 'info');
+
+            } catch (error) {
+                authOutput.innerHTML += log(`❌ Registration failed: ${error.message}`, 'error');
+                authOutput.innerHTML += log(`Error code: ${error.code}`, 'error');
+                console.error('Registration error:', error);
+                handleRefererError(error);
+            } finally {
+                document.getElementById('registerBtn').disabled = false;
+            }
+        };
+
+        window.testLogin = async function() {
+            if (!auth) {
+                alert('Please initialize Firebase first');
+                return;
+            }
+
+            const authOutput = document.getElementById('authOutput');
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                authOutput.innerHTML += log('Please enter both email and password', 'error');
+                return;
+            }
+
+            try {
+                authOutput.innerHTML += log(`Attempting to login user: ${email}`, 'info');
+                document.getElementById('loginBtn').disabled = true;
+
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                authOutput.innerHTML += log(`✅ Login successful!`, 'success');
+                authOutput.innerHTML += log(`User ID: ${userCredential.user.uid}`, 'success');
+                authOutput.innerHTML += log(`Email: ${userCredential.user.email}`, 'success');
+
+                // Get auth token
+                const token = await userCredential.user.getIdToken();
+                authOutput.innerHTML += log(`Auth token received (length: ${token.length})`, 'success');
+
+            } catch (error) {
+                authOutput.innerHTML += log(`❌ Login failed: ${error.message}`, 'error');
+                authOutput.innerHTML += log(`Error code: ${error.code}`, 'error');
+                
+                handleRefererError(error);
+                
+                console.error('Login error:', error);
+            } finally {
+                document.getElementById('loginBtn').disabled = false;
+            }
+        };
+
+        window.runDiagnostics = function() {
+            const diagnosticsOutput = document.getElementById('diagnosticsOutput');
+            diagnosticsOutput.innerHTML = log('Running comprehensive diagnostics...', 'info');
+
+            // Environment info
+            diagnosticsOutput.innerHTML += log('=== ENVIRONMENT INFO ===', 'info');
+            diagnosticsOutput.innerHTML += log(`User Agent: ${navigator.userAgent}`, 'info');
+            diagnosticsOutput.innerHTML += log(`URL: ${window.location.href}`, 'info');
+            diagnosticsOutput.innerHTML += log(`Origin: ${window.location.origin}`, 'info');
+            diagnosticsOutput.innerHTML += log(`Protocol: ${window.location.protocol}`, 'info');
+            diagnosticsOutput.innerHTML += log(`Host: ${window.location.host}`, 'info');
+
+            // Check if Firebase is initialized
+            if (!app) {
+                diagnosticsOutput.innerHTML += log('❌ Firebase not initialized', 'error');
+                return;
+            }
+
+            diagnosticsOutput.innerHTML += log('=== FIREBASE CONFIG ===', 'info');
+            diagnosticsOutput.innerHTML += log('✅ Firebase app initialized', 'success');
+            diagnosticsOutput.innerHTML += log(`App name: ${app.name}`, 'info');
+            
+            if (app.options) {
+                diagnosticsOutput.innerHTML += log('Firebase configuration:', 'info');
+                diagnosticsOutput.innerHTML += log(`  API Key: ${app.options.apiKey ? '✓ Present' : '❌ Missing'}`, app.options.apiKey ? 'success' : 'error');
+                diagnosticsOutput.innerHTML += log(`  Auth Domain: ${app.options.authDomain || '❌ Missing'}`, app.options.authDomain ? 'success' : 'error');
+                diagnosticsOutput.innerHTML += log(`  Project ID: ${app.options.projectId || '❌ Missing'}`, app.options.projectId ? 'success' : 'error');
+            }
+
+            if (auth) {
+                diagnosticsOutput.innerHTML += log('✅ Firebase Auth initialized', 'success');
+                diagnosticsOutput.innerHTML += log(`Current user: ${auth.currentUser ? auth.currentUser.email : 'None'}`, 'info');
+            } else {
+                diagnosticsOutput.innerHTML += log('❌ Firebase Auth not initialized', 'error');
+            }
+
+            // Test network connectivity to Firebase
+            diagnosticsOutput.innerHTML += log('=== NETWORK TESTS ===', 'info');
+            diagnosticsOutput.innerHTML += log('Testing network connectivity...', 'info');
+            
+            // Test Google APIs
+            fetch(`https://identitytoolkit.googleapis.com/v1/projects?key=${app.options.apiKey}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+                .then(response => {
+                    diagnosticsOutput.innerHTML += log(`Google Identity Toolkit API: ${response.status} ${response.statusText}`, 
+                        response.ok ? 'success' : 'error');
+                    
+                    if (response.status === 403) {
+                        diagnosticsOutput.innerHTML += log('🚨 403 Forbidden - API key restrictions likely blocking request', 'warning');
+                        diagnosticsOutput.innerHTML += log('Check Google Cloud Console → APIs & Services → Credentials → Your API Key', 'warning');
+                    }
+                    if (response.status === 404) {
+                        diagnosticsOutput.innerHTML += log('🚨 404 Not Found - Invalid API key or project', 'error');
+                    }
+                    
+                    return response.text();
+                })
+                .then(data => {
+                    diagnosticsOutput.innerHTML += log(`Response preview: ${data.substring(0, 100)}...`, 'info');
+                })
+                .catch(error => {
+                    diagnosticsOutput.innerHTML += log(`❌ Network test failed: ${error.message}`, 'error');
+                    if (error.message.includes('blocked')) {
+                        diagnosticsOutput.innerHTML += log('This looks like a CORS/referer blocking issue', 'warning');
+                    }
+                });
+
+            // Check for common issues
+            diagnosticsOutput.innerHTML += log('=== COMMON ISSUES CHECK ===', 'info');
+            
+            if (window.location.protocol === 'file:') {
+                diagnosticsOutput.innerHTML += log('⚠️ Running from file:// - this will cause referer issues', 'warning');
+            }
+            
+            if (!window.location.host.includes('localhost') && window.location.protocol === 'http:') {
+                diagnosticsOutput.innerHTML += log('⚠️ Using HTTP instead of HTTPS', 'warning');
+            }
+        };
+
+        // Disable auth buttons initially
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('registerBtn').disabled = true;
+            document.getElementById('loginBtn').disabled = true;
+        });
+    </script>
+</body>
+</html>

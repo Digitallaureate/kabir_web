@@ -1,0 +1,1296 @@
+---
+import Layout from '../components/layout/Layout.astro';
+import Hero from '../components/ui/Hero.astro';
+import Section from '../components/ui/Section.astro';
+import Grid from '../components/ui/Grid.astro';
+import Timeline from '../components/ui/Timeline.astro';
+import BlogCard from '../components/ui/BlogCard.astro';
+import MonumentCard from '../components/ui/Monument.astro';
+import Button from '../components/Button.astro';
+
+// Sample data for the page (this would come from Firebase in the real implementation)
+const heroData = {
+  title: "Step Into History & Timeless Heritage",
+  subtitle: "Discover hidden stories, cultural marvels, and the rich tapestry of India’s past—with Kabir, your immersive travel companion",
+  imageUrl: "/hero_background.jpg",
+  primaryCta: {
+    text: "Explore History",
+    href: "/map"
+  },
+  secondaryCta: {
+    text: "Learn More",
+    href: "/about"
+  }
+};
+
+const features = [
+  {
+    title: "Historical Context",
+    description: "Understand the rich history behind Agra's monuments and their cultural significance.",
+    icon: "icon-history"
+  },
+  {
+    title: "Interactive Map",
+    description: "Navigate through an interactive map showcasing historical monuments and curated routes.",
+    icon: "icon-map"
+  },
+  {
+    title: "Cultural Stories",
+    description: "Discover untold stories and the cultural heritage preserved within these monuments.",
+    icon: "icon-culture"
+  },
+  {
+    title: "Mobile App",
+    description: "Continue exploring with our mobile app for an immersive on-the-go experience.",
+    icon: "icon-mobile"
+  }
+];
+
+const timelineEvents = [
+  {
+    year: "1565",
+    title: "Construction of Agra Fort Begins",
+    description: "Emperor Akbar initiated the construction of the Agra Fort using red sandstone."
+  },
+  {
+    year: "1631",
+    title: "Taj Mahal Construction Begins",
+    description: "Shah Jahan began building the Taj Mahal as a memorial to his wife Mumtaz Mahal."
+  },
+  {
+    year: "1648",
+    title: "Completion of Taj Mahal",
+    description: "The main mausoleum of the Taj Mahal was completed after 17 years of construction."
+  },
+  {
+    year: "1658",
+    title: "Shah Jahan Imprisoned",
+    description: "Shah Jahan was imprisoned in Agra Fort by his son Aurangzeb, where he spent his last years."
+  }
+];
+
+const featuredMonuments = [
+  {
+    id: "taj-mahal",
+    name: "Taj Mahal",
+    imageUrl: "/taj_mahal.jpg",
+    period: "Mughal Era",
+    location: "Agra, Uttar Pradesh",
+    description: "The Taj Mahal is an ivory-white marble mausoleum, built by Emperor Shah Jahan in memory of his beloved wife Mumtaz Mahal.",
+    coordinates: {
+      lat: 27.1751,
+      lng: 78.0421
+    }
+  },
+  {
+    id: "agra-fort",
+    name: "Agra Fort",
+    imageUrl: "/agra_fort.jpg",
+    period: "Mughal Era",
+    location: "Agra, Uttar Pradesh",
+    description: "Agra Fort is a historical fort that was the main residence of the emperors of the Mughal Dynasty until 1638.",
+    coordinates: {
+      lat: 27.1797,
+      lng: 78.0215
+    }
+  },
+  {
+    id: "fatehpur-sikri",
+    name: "Fatehpur Sikri",
+    imageUrl: "/fatehpur.jpg",
+    period: "Mughal Era",
+    location: "Near Agra, Uttar Pradesh",
+    description: "Fatehpur Sikri is a city founded in 1569 by Emperor Akbar, serving briefly as the capital of the Mughal Empire.",
+    coordinates: {
+      lat: 27.0902,
+      lng: 77.6701
+    }
+  }
+];
+
+const recentBlogs = [
+  {
+    title: "The Untold Stories of Taj Mahal's Architecture",
+    excerpt: "Discover the hidden architectural details and symbolism within the world's most famous mausoleum.",
+    imageUrl: "/taj_architecture.jpg",
+    slug: "untold-stories-taj-mahal-architecture",
+    date: "2023-05-15",
+    author: "Priya Singh",
+    categories: ["Architecture", "History"]
+  },
+  {
+    title: "Cultural Influences on Mughal Monument Designs",
+    excerpt: "Exploring how Persian, Indian, and Islamic traditions merged to create Agra's unique architectural identity.",
+    imageUrl: "/mughal_designs.jpg",
+    slug: "cultural-influences-mughal-monument-designs",
+    date: "2023-04-22",
+    author: "Rahul Verma",
+    categories: ["Culture", "Architecture"]
+  },
+  {
+    title: "A Day in the Life of Shah Jahan's Court",
+    excerpt: "Reimagining the daily proceedings and cultural life within the royal court of Emperor Shah Jahan.",
+    imageUrl: "/shahjahan_court.jpg",
+    slug: "day-in-life-shah-jahan-court",
+    date: "2023-03-10",
+    author: "Anjali Kapoor",
+    categories: ["History", "Lifestyle"]
+  }
+];
+---
+
+<!-- Loading animation overlay -->
+<div class="page-loader">
+  <div class="loader-content">
+    <div class="loader-icon">
+      <svg width="80" height="80" viewBox="0 0 100 100">
+        <path class="loader-path" d="M10,50 A40,40 0 1,1 90,50 A40,40 0 1,1 10,50 Z" />
+        <path class="loader-monument" d="M50,10 L65,40 L80,90 H20 L35,40 Z" />
+      </svg>
+    </div>
+    <div class="loader-text">Project Kabir</div>
+  </div>
+</div>
+
+<Layout title="Home">
+  <!-- Animated background patterns -->
+  <div class="animated-background">
+    <div class="pattern pattern-1"></div>
+    <div class="pattern pattern-2"></div>
+    <div class="pattern pattern-3"></div>
+  </div>
+
+  <!-- Hero Section -->
+  <Hero 
+    title={heroData.title}
+    subtitle={heroData.subtitle}
+    imageUrl={heroData.imageUrl}
+    primaryCta={heroData.primaryCta}
+    secondaryCta={heroData.secondaryCta}
+    height="large"
+  />
+
+  <!-- Scroll indicator -->
+  <div class="scroll-indicator">
+    <div class="mouse">
+      <div class="wheel"></div>
+    </div>
+    <div class="scroll-text">Scroll to explore</div>
+  </div>
+
+  <!-- Features Section with 3D cards -->
+  <Section 
+    title="Explore Project Kabir"
+    subtitle="Connecting the past with the present through interactive exploration and cultural storytelling."
+    background="light"
+    centered={true}
+    classes="features-section reveal-section"
+  >
+    <div class="features-3d-container">
+      {features.map((feature, index) => (
+        <div class="feature-3d-card" style={`--delay: ${index * 0.15}s`}>
+          <div class="feature-3d-content">
+            <div class="feature-icon">
+              <div class="icon-wrapper">
+                {feature.icon === 'icon-history' && (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                )}
+                {feature.icon === 'icon-map' && (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                    <line x1="8" y1="2" x2="8" y2="18"></line>
+                    <line x1="16" y1="6" x2="16" y2="22"></line>
+                  </svg>
+                )}
+                {feature.icon === 'icon-culture' && (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
+                  </svg>
+                )}
+                {feature.icon === 'icon-mobile' && (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                    <line x1="12" y1="18" x2="12" y2="18"></line>
+                  </svg>
+                )}
+              </div>
+            </div>
+            <h3 class="feature-title">{feature.title}</h3>
+            <p class="feature-description">{feature.description}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </Section>
+
+  <!-- Historical Timeline Section -->
+  <Section
+    title="Historical Timeline"
+    subtitle="Key moments in rich historical past"
+    centered={true}
+    classes="timeline-section reveal-section"
+  >
+    <Timeline items={timelineEvents} />
+  </Section>
+
+  <!-- 3D Monument Showcase -->
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+  <div class="monument-showcase reveal-section">
+    <div class="monument-3d-container">
+      <model-viewer
+        src="/taj_mahal.glb"
+        alt="A 3D model of the Taj Mahal"
+        auto-rotate
+        camera-controls
+        ar
+        shadow-intensity="1"
+        exposure="1.2"
+        class="monument-3d"
+      ></model-viewer>
+
+      <div class="monument-showcase-content">
+        <h2>Experience the Grandeur</h2>
+        <p>Immerse yourself in the architectural marvels of India with our interactive guides and detailed histories of each monument.</p>
+        <Button text="Start Exploring" href="/map" variant="primary" size="large" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Featured Monuments Section -->
+  <Section
+    title="Featured Monuments"
+    subtitle="Explore iconic historical sites that define cultural landscape"
+    background="light"
+    centered={true}
+    classes="monuments-section reveal-section"
+  >
+    <Grid columns={{ mobile: 1, tablet: 2, desktop: 3 }}>
+      {featuredMonuments.map((monument, index) => (
+        <div class="monument-card-wrapper" style={`--delay: ${index * 0.2}s`}>
+          <MonumentCard {...monument} variant="default" />
+        </div>
+      ))}
+    </Grid>
+    <div class="text-center mt-9 fade-in-up">
+      <Button text="Explore History" href="/map" variant="primary" size="large" />
+    </div>
+  </Section>
+
+  <!-- Blog Preview Section -->
+  <Section
+    title="Latest Stories"
+    subtitle="Explore our blog for historical insights and cultural tales"
+    centered={true}
+    classes="blog-section reveal-section"
+  >
+    <Grid columns={{ mobile: 1, tablet: 2, desktop: 3 }}>
+      {recentBlogs.map((blog, index) => (
+        <div class="blog-card-wrapper" style={`--delay: ${index * 0.2}s`}>
+          <BlogCard {...blog} />
+        </div>
+      ))}
+    </Grid>
+    <div class="text-center mt-8 fade-in-up">
+      <Button text="View All Articles" href="/blogs" variant="outline" size="large" />
+    </div>
+  </Section>
+
+  <!-- App Promotion Section with 3D phone -->
+  <Section background="primary" centered={true} classes="app-section reveal-section">
+    <div class="app-promo">
+      <div class="app-promo-content fade-in-left">
+        <h2>Take Kabir With You</h2>
+        <p>Download our mobile app to explore historical monuments on the go with guided tours, audio narrations, and interactive experiences.</p>
+        <div class="app-buttons">
+          <a href="#" class="app-store">
+            <img src="/app_store.png" alt="Download on App Store" />
+          </a>
+          <a href="#" class="play-store">
+            <img src="/playstore_badge.png" alt="Get it on Google Play" />
+          </a>
+        </div>
+      </div>
+      <div class="app-phone-3d fade-in-right">
+        <div class="phone-wrapper">
+          <div class="phone">
+            <div class="phone-screen">
+              <img src="/app_preview.jpg" alt="Kabir App Preview" />
+            </div>
+            <div class="phone-notch"></div>
+            <div class="phone-button"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Section>
+
+  <!-- Animated cultural pattern footer -->
+  <div class="cultural-pattern-footer">
+    <div class="pattern-row">
+      <div class="pattern-element"></div>
+      <div class="pattern-element"></div>
+      <div class="pattern-element"></div>
+      <div class="pattern-element"></div>
+      <div class="pattern-element"></div>
+      <div class="pattern-element"></div>
+      <div class="pattern-element"></div>
+      <div class="pattern-element"></div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  /* Page Loader Animation */
+  .page-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+  }
+
+  .page-loader.hidden {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .loader-content {
+    text-align: center;
+  }
+
+  .loader-icon {
+    margin-bottom: 1rem;
+  }
+
+  .loader-path {
+    fill: none;
+    stroke: rgba(194, 99, 75, 0.2);
+    stroke-width: 5;
+  }
+
+  .loader-monument {
+    fill: #c2634b;
+    transform-origin: center;
+    animation: monument-pulse 1.5s ease-in-out infinite alternate;
+  }
+
+  .loader-text {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #c2634b;
+    opacity: 0;
+    animation: fade-in 1s ease-out 0.5s forwards;
+  }
+
+  @keyframes monument-pulse {
+    0% {
+      transform: scale(0.95);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  /* Animated Background */
+  .animated-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .pattern {
+    position: absolute;
+    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50,15 L85,85 L15,85 Z' fill='%23c2634b' fill-opacity='0.05'/%3E%3C/svg%3E");
+    background-size: 100px 100px;
+    opacity: 0.5;
+  }
+
+  .pattern-1 {
+    top: 5%;
+    right: 10%;
+    width: 300px;
+    height: 300px;
+    animation: float 15s infinite ease-in-out;
+  }
+
+  .pattern-2 {
+    bottom: 10%;
+    left: 5%;
+    width: 200px;
+    height: 200px;
+    animation: float 18s infinite ease-in-out reverse;
+  }
+
+  .pattern-3 {
+    top: 40%;
+    left: 40%;
+    width: 150px;
+    height: 150px;
+    animation: float 20s infinite ease-in-out 2s;
+  }
+
+  @keyframes float {
+    0% {
+      transform: translate(0, 0) rotate(0deg);
+    }
+    50% {
+      transform: translate(30px, 20px) rotate(5deg);
+    }
+    100% {
+      transform: translate(0, 0) rotate(0deg);
+    }
+  }
+
+  /* Scroll Indicator */
+  .scroll-indicator {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 10;
+    animation: fade-in 1s ease-out 1s forwards, fade-out 1s ease-in 6s forwards;
+    opacity: 0;
+  }
+
+  .mouse {
+    width: 30px;
+    height: 50px;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    border-radius: 20px;
+    display: flex;
+    justify-content: center;
+    padding-top: 10px;
+  }
+
+  .wheel {
+    width: 4px;
+    height: 8px;
+    background-color: #fff;
+    border-radius: 2px;
+    animation: scroll-wheel 1.5s infinite;
+  }
+
+  .scroll-text {
+    margin-top: 8px;
+    color: white;
+    font-size: 0.85rem;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+  }
+
+  @keyframes scroll-wheel {
+    0% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(15px);
+      opacity: 0;
+    }
+  }
+
+  @keyframes fade-out {
+    0% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
+
+  /* 3D Feature Cards */
+  .features-3d-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+    perspective: 1000px;
+  }
+
+  .feature-3d-card {
+    background-color: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    transition: transform 0.5s ease, box-shadow 0.5s ease;
+    transform: translateY(50px) rotateX(10deg);
+    opacity: 0;
+    animation: feature-appear 0.8s forwards ease-out var(--delay);
+    transform-style: preserve-3d;
+  }
+
+  .feature-3d-card:hover {
+    transform: translateY(-10px) rotateX(0deg) rotateY(3deg) !important;
+    box-shadow: 0 20px 40px rgba(194, 99, 75, 0.15);
+  }
+
+  .feature-icon {
+    margin-bottom: 20px;
+  }
+
+  .icon-wrapper {
+    width: 60px;
+    height: 60px;
+    background-color: rgba(194, 99, 75, 0.1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #c2634b;
+    transition: transform 0.3s ease;
+  }
+
+  .feature-3d-card:hover .icon-wrapper {
+    transform: rotateY(360deg);
+  }
+
+  .feature-title {
+    font-size: 1.4rem;
+    margin-bottom: 15px;
+    color: #333;
+  }
+
+  .feature-description {
+    color: #666;
+    line-height: 1.6;
+  }
+
+  @keyframes feature-appear {
+    to {
+      opacity: 1;
+      transform: translateY(0) rotateX(0deg);
+    }
+  }
+
+/* 3D Monument Showcase - Enhanced Version */
+.monument-showcase {
+  padding: 5rem 3rem;
+  background: linear-gradient(135deg, #ffb09c 0%, #ffd6cc 100%);
+  border-radius: 2.5rem;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* Decorative elements */
+.monument-showcase::before {
+  content: "";
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  z-index: 0;
+}
+
+/* Container with responsive layout */
+.monument-3d-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* Model Viewer 3D Display */
+model-viewer.monument-3d {
+  width: 800px;
+  height: 600px;
+  max-width: 100%;
+  background: linear-gradient(to bottom, #f7e9ec, #f0e0e5);
+  border-radius: 2rem;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+  transition: transform 0.5s ease, box-shadow 0.5s ease;
+}
+
+model-viewer.monument-3d:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 35px 60px rgba(0, 0, 0, 0.25);
+}
+
+/* Content Styling */
+.monument-showcase-content {
+  max-width: 550px;
+  color: #2a2a2a;
+  text-align: left;
+  animation: fadeIn 1s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.monument-showcase-content h2 {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+  color: #222;
+  font-weight: 700;
+  line-height: 1.2;
+  position: relative;
+}
+
+.monument-showcase-content h2::after {
+  content: "";
+  display: block;
+  width: 80px;
+  height: 4px;
+  background: #c2634b;
+  margin-top: 1rem;
+  border-radius: 2px;
+}
+
+.monument-showcase-content p {
+  font-size: 1.25rem;
+  line-height: 1.8;
+  margin-bottom: 2.5rem;
+  color: #444;
+  font-weight: 400;
+}
+
+/* Button styling if needed */
+.monument-showcase-btn {
+  display: inline-block;
+  padding: 1rem 2rem;
+  background: #c2634b;
+  color: white;
+  border-radius: 50px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(194, 99, 75, 0.4);
+}
+
+.monument-showcase-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(194, 99, 75, 0.6);
+  background: #b55a44;
+}
+
+/* Interactive controls for model viewer */
+.model-controls {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.model-control-btn {
+  padding: 0.75rem 1.25rem;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 1.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.model-control-btn:hover {
+  background: white;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading state for model viewer */
+model-viewer.monument-3d::before {
+  content: "Loading 3D Model...";
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(247, 233, 236, 0.8);
+  color: #c2634b;
+  font-size: 1.5rem;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+model-viewer.monument-3d[data-loading="true"]::before {
+  opacity: 1;
+}
+
+/* Enhanced responsive design */
+@media (max-width: 1200px) {
+  model-viewer.monument-3d {
+    height: 600px;
+    width: 600px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .monument-showcase {
+    padding: 4rem 2rem;
+  }
+  
+  .monument-3d-container {
+    flex-direction: column;
+    align-items: center;
+    gap: 3rem;
+  }
+
+  .monument-showcase-content {
+    max-width: 90%;
+    text-align: center;
+    order: 2;
+  }
+  
+  .monument-showcase-content h2::after {
+    margin: 1rem auto 0;
+  }
+
+  model-viewer.monument-3d {
+    height: 550px;
+    width: 100%;
+    order: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .monument-showcase {
+    padding: 3rem 1.5rem;
+    border-radius: 1.5rem;
+  }
+  
+  .monument-showcase-content h2 {
+    font-size: 2.25rem;
+  }
+  
+  .monument-showcase-content p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+  }
+  
+  model-viewer.monument-3d {
+    height: 450px;
+  }
+}
+
+@media (max-width: 480px) {
+  .monument-showcase {
+    padding: 2rem 1rem;
+  }
+  
+  .monument-showcase-content h2 {
+    font-size: 1.75rem;
+  }
+  
+  model-viewer.monument-3d {
+    height: 350px;
+  }
+  
+  .model-controls {
+    justify-content: center;
+  }
+}  
+
+/* App Promo Section with 3D Phone */
+.app-promo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3rem;
+  padding: 4rem 2rem;
+  background: linear-gradient(135deg, #1a1c22 0%, #121418 100%);
+  border-radius: 2rem;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Animated background elements */
+.app-promo::before,
+.app-promo::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.15;
+  z-index: 0;
+}
+
+.app-promo::before {
+  background: radial-gradient(circle, #6366f1 0%, transparent 70%);
+  width: 500px;
+  height: 500px;
+  top: -100px;
+  right: -100px;
+  animation: pulse 15s infinite alternate;
+}
+
+.app-promo::after {
+  background: radial-gradient(circle, #f472b6 0%, transparent 70%);
+  width: 400px;
+  height: 400px;
+  bottom: -150px;
+  left: -150px;
+  animation: pulse 12s infinite alternate-reverse;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.8); opacity: 0.1; }
+  100% { transform: scale(1.2); opacity: 0.2; }
+}
+
+/* Content Area */
+.app-promo-content {
+  flex: 1;
+  color: white;
+  position: relative;
+  z-index: 2;
+  max-width: 550px;
+}
+
+.app-promo-content h2 {
+  font-size: 3rem;
+  font-weight: 800;
+  margin-bottom: 1.5rem;
+  line-height: 1.2;
+  background: linear-gradient(90deg, #ffffff, #d8d8d8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+
+.app-promo-content p {
+  font-size: 1.25rem;
+  margin-bottom: 2.5rem;
+  opacity: 0.9;
+  line-height: 1.8;
+  color: #e0e0e0;
+}
+
+/* Download Buttons - Centered and Bigger */
+.app-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.app-store, .play-store {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.app-store img, .play-store img {
+  height: 70px; /* Bigger badges */
+  width: auto;
+  display: block;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.app-store:hover img, .play-store:hover img {
+  transform: translateY(-5px);
+}
+
+/* 3D Phone Display - Bigger & More Tilted */
+.app-phone-3d {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  perspective: 1800px;
+  position: relative;
+  z-index: 2;
+  min-height: 650px;
+}
+
+.phone-wrapper {
+  transform-style: preserve-3d;
+  animation: phone-bounce 5s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+  position: relative;
+}
+
+@keyframes phone-bounce {
+  0%, 100% {
+    transform: translateY(0) rotateZ(0deg) rotateY(-30deg); /* More tilted */
+  }
+  25% {
+    transform: translateY(-40px) rotateZ(-5deg) rotateY(-35deg); /* More tilted */
+  }
+  35% {
+    transform: translateY(15px) rotateZ(2deg) rotateY(-28deg); /* More tilted */
+  }
+  45% {
+    transform: translateY(-15px) rotateZ(-1deg) rotateY(-32deg); /* More tilted */
+  }
+  50% {
+    transform: translateY(0) rotateZ(0deg) rotateY(-30deg); /* More tilted */
+  }
+  75% {
+    transform: translateY(-20px) rotateZ(3deg) rotateY(-25deg); /* More tilted */
+  }
+  85% {
+    transform: translateY(8px) rotateZ(-1deg) rotateY(-32deg); /* More tilted */
+  }
+  92% {
+    transform: translateY(-5px) rotateZ(0deg) rotateY(-30deg); /* More tilted */
+  }
+}
+
+/* Phone Physical Design - Bigger */
+.phone {
+  width: 320px; /* Bigger phone */
+  height: 650px; /* Bigger phone */
+  background-color: #111;
+  border-radius: 60px;
+  position: relative;
+  overflow: hidden;
+  border: 10px solid #222;
+  box-shadow: 
+    0 30px 60px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 0 30px rgba(0, 0, 0, 0.8) inset;
+  transform: rotateY(-30deg) rotateX(5deg); /* More tilted */
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+/* Phone Shadow */
+.phone::after {
+  content: '';
+  position: absolute;
+  bottom: -80px;
+  left: 10%;
+  width: 80%;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.2);
+  filter: blur(20px);
+  border-radius: 50%;
+  transform: rotateX(90deg);
+  animation: shadow-bounce 5s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+  z-index: -1;
+}
+
+@keyframes shadow-bounce {
+  0%, 100% { opacity: 0.7; transform: rotateX(90deg) scale(1); }
+  25% { opacity: 0.3; transform: rotateX(90deg) scale(0.7); }
+  35% { opacity: 0.8; transform: rotateX(90deg) scale(1.1); }
+  45% { opacity: 0.5; transform: rotateX(90deg) scale(0.8); }
+  50% { opacity: 0.7; transform: rotateX(90deg) scale(1); }
+  75% { opacity: 0.4; transform: rotateX(90deg) scale(0.8); }
+  85% { opacity: 0.75; transform: rotateX(90deg) scale(1.05); }
+  92% { opacity: 0.6; transform: rotateX(90deg) scale(0.9); }
+}
+
+/* Phone Screen */
+.phone-screen {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  border-radius: 50px;
+  transform: translateZ(2px);
+  background: linear-gradient(145deg, #2c3e50, #4ca1af);
+}
+
+.phone-screen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.5s ease;
+  animation: screen-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes screen-glow {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(1.15); }
+}
+
+/* Phone Details */
+.phone-notch {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50%;
+  height: 35px;
+  background-color: #111;
+  border-radius: 0 0 20px 20px;
+  z-index: 10;
+}
+
+.phone-button {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .app-promo {
+    gap: 3rem;
+  }
+  
+  .phone {
+    width: 300px;
+    height: 600px;
+  }
+  
+  .app-promo-content h2 {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 992px) {
+  .app-promo {
+    flex-direction: column;
+    text-align: center;
+    padding: 3rem 1.5rem;
+  }
+  
+  .app-promo-content {
+    max-width: 100%;
+  }
+  
+  .app-phone-3d {
+    min-height: 500px;
+  }
+  
+  .phone-wrapper {
+    transform: scale(0.9);
+  }
+}
+
+@media (max-width: 768px) {
+  .app-promo-content h2 {
+    font-size: 2.2rem;
+  }
+  
+  .app-promo-content p {
+    font-size: 1.1rem;
+  }
+  
+  .phone {
+    width: 260px;
+    height: 520px;
+  }
+  
+  .app-store img, .play-store img {
+    height: 60px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-promo {
+    padding: 2rem 1rem;
+  }
+  
+  .app-promo-content h2 {
+    font-size: 1.8rem;
+  }
+  
+  .app-phone-3d {
+    min-height: 400px;
+  }
+  
+  .phone-wrapper {
+    transform: scale(0.8);
+  }
+  
+  .app-buttons {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .app-store img, .play-store img {
+    height: 55px;
+  }
+}
+
+  /* Cultural Pattern Footer */
+  .cultural-pattern-footer {
+    height: 40px;
+    overflow: hidden;
+    background-color: #c2634b;
+  }
+
+  .pattern-row {
+    display: flex;
+    animation: slide-pattern 20s linear infinite;
+  }
+
+  .pattern-element {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20,4 L32,20 L20,36 L8,20 Z' fill='rgba(255,255,255,0.2)'/%3E%3C/svg%3E");
+  }
+
+  @keyframes slide-pattern {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-320px);
+    }
+  }
+
+  /* Responsive Design */
+  @media (max-width: 992px) {
+    .monument-3d-container {
+      grid-template-columns: 1fr;
+      text-align: center;
+    }
+
+    .monument-showcase-content {
+      margin: 0 auto;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .app-promo {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .app-phone-3d {
+      order: -1;
+      margin-bottom: 2rem;
+    }
+
+    .app-buttons {
+      justify-content: center;
+    }
+
+    .features-3d-container {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .monument-3d {
+      height: 300px;
+    }
+
+    .monument-3d-model {
+      transform: scale(0.8);
+    }
+
+    .app-promo-content h2 {
+      font-size: 1.8rem;
+    }
+  }
+
+  /* Prefers-reduced-motion */
+  @media (prefers-reduced-motion: reduce) {
+    .page-loader, .scroll-indicator, .pattern, .feature-3d-card, .monument-3d-model, 
+    .phone-wrapper, .pattern-row, .reveal-section {
+      animation: none !important;
+      transition: none !important;
+    }
+
+    .feature-3d-card, .monument-card-wrapper, .blog-card-wrapper,
+    .fade-in-up, .fade-in-left, .fade-in-right, .reveal-section {
+      opacity: 1;
+      transform: none;
+    }
+}
+</style>
+
+<script>
+  // Page loading animation
+  document.addEventListener('DOMContentLoaded', () => {
+    // Hide loader after page is loaded
+    setTimeout(() => {
+      const loader = document.querySelector('.page-loader');
+      if (loader) {
+        loader.classList.add('hidden');
+      }
+    }, 2000);
+
+    // Reveal sections on scroll
+    const revealSections = document.querySelectorAll('.reveal-section');
+    
+    const revealOnScroll = () => {
+      const windowHeight = window.innerHeight;
+      const revealPoint = 150;
+      
+      revealSections.forEach(section => {
+        const sectionTop = section.getBoundingClientRect().top;
+        
+        if (sectionTop < windowHeight - revealPoint) {
+          section.classList.add('revealed');
+        }
+      });
+    };
+    
+    // Initial check on load
+    revealOnScroll();
+    
+    // Check on scroll
+    window.addEventListener('scroll', revealOnScroll);
+    
+    // 3D card hover effect
+    const featureCards = document.querySelectorAll('.feature-3d-card');
+    
+    featureCards.forEach(card => {
+      card.addEventListener('mousemove', e => {
+        const rect = card.getBoundingClientRect();
+        const x = (e as MouseEvent).clientX - rect.left;
+        const y = (e as MouseEvent).clientY - rect.top;
+        
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        const rotateX = (y - centerY) / 20;
+        const rotateY = (centerX - x) / 20;
+        
+        (card as HTMLElement).style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+      });
+      
+      card.addEventListener('mouseleave', () => {
+        (card as HTMLElement).style.transform = '';
+      });
+    });
+  });
+</script>

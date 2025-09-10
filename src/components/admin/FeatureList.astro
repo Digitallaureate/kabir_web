@@ -1,0 +1,110 @@
+---
+interface Props {
+  id: string;
+  features?: any[];
+  type?: string;
+}
+
+const { id, features = [], type = 'cities' } = Astro.props;
+---
+
+<div class="feature-list" id={id} data-type={type}>
+  <h3>{type.charAt(0).toUpperCase() + type.slice(1)}</h3>
+  {features.length === 0 ? (
+    <p>No features found.</p>
+  ) : (
+    <ul class="feature-items">
+      {features.map((feature) => (
+        <li class="feature-item">
+          <span>{feature.name || 'Unnamed'}</span>
+          <div class="feature-actions">
+            <button class="btn btn-secondary" data-id={feature.id} data-action="edit">Edit</button>
+            <button class="btn btn-danger" data-id={feature.id} data-action="delete">Delete</button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
+
+<style>
+  .feature-list {
+    background: #ffffff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+  }
+
+  h3 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.2rem;
+    color: var(--primary-text);
+    margin-bottom: 1rem;
+  }
+
+  p {
+    font-family: 'Poppins', sans-serif;
+    color: var(--primary-text);
+    font-style: italic;
+  }
+
+  .feature-items {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .feature-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+  }
+
+  .feature-item span {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    color: var(--primary-text);
+  }
+
+  .feature-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const list = document.querySelector('.feature-list');
+    const type = list?.getAttribute('data-type') || 'cities';
+    const id = list?.id;
+
+    if (!list) {
+      console.warn(`Element with id "${id}" not found`);
+      return;
+    }
+
+    list.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      
+      if (!target || !target.dataset) {
+        return;
+      }
+
+      const featureId = target.dataset.id;
+      const action = target.dataset.action;
+      
+      if (featureId && action) {
+        window.dispatchEvent(new CustomEvent(action, { 
+          detail: { 
+            id: featureId,
+            type: type
+          } 
+        }));
+      }
+    });
+  });
+</script>

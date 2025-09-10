@@ -1,0 +1,218 @@
+---
+// Hero banner component with multiple styles
+import Button from '../Button.astro';
+
+interface CtaButton {
+  text: string;
+  href: string;
+  variant?: 'primary' | 'outline' | 'text' | 'secondary';
+}
+
+interface Props {
+  title: string;
+  subtitle?: string;
+  imageUrl?: string;
+  overlayOpacity?: number;
+  height?: 'small' | 'medium' | 'large' | 'full';
+  alignment?: 'left' | 'center' | 'right';
+  primaryCta?: CtaButton;
+  secondaryCta?: CtaButton;
+  classes?: string;
+}
+
+const {
+  title,
+  subtitle,
+  imageUrl,
+  overlayOpacity = 0.5,
+  height = 'medium',
+  alignment = 'center',
+  primaryCta,
+  secondaryCta,
+  classes = ''
+} = Astro.props;
+
+const heightClasses = {
+  small: 'hero-sm',
+  medium: 'hero-md',
+  large: 'hero-lg',
+  full: 'hero-full'
+};
+---
+
+<section class:list={['hero', heightClasses[height], `hero-${alignment}`, classes]}>
+  {imageUrl && (
+    <div class="hero-background">
+      <img src={imageUrl} alt="" class="hero-image" />
+      <div class="hero-overlay" style={`opacity: ${overlayOpacity};`}></div>
+    </div>
+  )}
+  
+  <div class="container">
+    <div class="hero-content">
+      <h1 class="hero-title">{title}</h1>
+      {subtitle && <p class="hero-subtitle">{subtitle}</p>}
+      
+      {(primaryCta || secondaryCta) && (
+        <div class="hero-buttons">
+          {primaryCta && (
+            <Button
+              text={primaryCta.text}
+              href={primaryCta.href}
+              variant={primaryCta.variant || 'primary'}
+              size="large"
+            />
+          )}
+          
+          {secondaryCta && (
+            <Button
+              text={secondaryCta.text}
+              href={secondaryCta.href}
+              variant={secondaryCta.variant || 'outline'}
+              size="large"
+            />
+          )}
+        </div>
+      )}
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .hero-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+  }
+
+  .hero-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    z-index: 1;
+  }
+
+  .container {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .hero-content {
+    max-width: 800px;
+    color: #fff;
+    padding: 60px 0;
+  }
+
+  .hero-title {
+    font-size: 3rem;
+    line-height: 1.2;
+    margin-bottom: 1rem;
+    font-weight: 700;
+  }
+
+  .hero-subtitle {
+    font-size: 1.25rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+  }
+
+  .hero-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  /* Height variants */
+  .hero-sm {
+    min-height: 300px;
+  }
+
+  .hero-md {
+    min-height: 500px;
+  }
+
+  .hero-lg {
+    min-height: 700px;
+  }
+
+  .hero-full {
+    min-height: 100vh;
+  }
+
+  /* Alignment variants */
+  .hero-center .hero-content {
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .hero-center .hero-buttons {
+    justify-content: center;
+  }
+
+  .hero-right .hero-content {
+    margin-left: auto;
+    text-align: right;
+  }
+
+  .hero-right .hero-buttons {
+    justify-content: flex-end;
+  }
+
+  /* Background-less hero adjustments */
+  .hero:not(:has(.hero-background)) .hero-content {
+    color: inherit;
+  }
+
+  @media (max-width: 768px) {
+    .hero-title {
+      font-size: 2.25rem;
+    }
+
+    .hero-subtitle {
+      font-size: 1.125rem;
+    }
+
+    .hero-md {
+      min-height: 400px;
+    }
+
+    .hero-lg {
+      min-height: 500px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .hero-title {
+      font-size: 1.85rem;
+    }
+
+    .hero-content {
+      padding: 40px 0;
+    }
+  }
+</style>

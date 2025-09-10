@@ -1,0 +1,540 @@
+---
+import AdminLayout from '../../components/layout/AdminLayout.astro';
+
+// Define interfaces (consistent with Map.astro and AdminMap.astro)
+interface Monument {
+  id: string;
+  name?: string;
+  city_id?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  description?: string;
+  image_url?: string;
+  period?: string;
+  year_built?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface Submonument {
+  id: string;
+  name?: string;
+  parent_id?: string;
+  latitude?: number;
+  longitude?: number;
+  description?: string;
+  content?: string;
+  image_url?: string;
+  tags?: string[];
+  title?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Static sample data instead of Firebase
+const monuments: Monument[] = [
+  {
+    id: "1",
+    name: "Ancient Temple",
+    is_active: true,
+    created_at: "2025-05-28T10:00:00Z",
+    updated_at: "2025-05-28T15:30:00Z"
+  },
+  {
+    id: "2",
+    name: "Old Castle",
+    is_active: true,
+    created_at: "2025-05-27T09:00:00Z"
+  },
+  {
+    id: "3",
+    name: "Historic Bridge",
+    is_active: false,
+    updated_at: "2025-05-26T14:00:00Z"
+  }
+];
+
+const submonuments: Submonument[] = [
+  {
+    id: "1",
+    name: "Temple Garden",
+    parent_id: "1",
+    is_active: true,
+    created_at: "2025-05-28T11:00:00Z"
+  },
+  {
+    id: "2",
+    name: "Castle Tower",
+    parent_id: "2",
+    is_active: true,
+    updated_at: "2025-05-27T16:00:00Z"
+  }
+];
+
+// Calculate stats for active monuments and submonuments
+const activeMonumentsCount = monuments.filter(m => m.is_active).length;
+const activeSubmonumentsCount = submonuments.filter(s => s.is_active).length;
+
+// Updated stats data with map-specific stats
+const statsData = [
+  {
+    title: "Active Monuments",
+    count: activeMonumentsCount,
+    icon: "monument"
+  },
+  {
+    title: "Active Submonuments",
+    count: activeSubmonumentsCount,
+    icon: "map-pin"
+  },
+  {
+    title: "Contact Submissions",
+    count: 8,
+    icon: "mail"
+  },
+  
+];
+
+// Admin navigation links (already includes Map Markers link)
+const adminLinks = [
+  {
+    title: "Map Markers",
+    description: "Manage monument locations and information for the interactive map.",
+    icon: "map-pin",
+    link: "/admin/map"
+  },
+  {
+    title: "Blog Posts",
+    description: "Create, edit, and manage blog content and categories.",
+    icon: "edit",
+    link: "/admin/blog"
+  },
+  {
+    title: "Contact Entries",
+    description: "View and manage contact form submissions from users.",
+    icon: "inbox",
+    link: "/admin/contacts"
+  },
+  {
+    title: "Settings",
+    description: "Configure website settings, user access, and preferences.",
+    icon: "settings",
+    link: "/admin/settings"
+  }
+];
+
+// Recent map activities (derived from monuments and submonuments)
+const recentMapActivities = [
+  ...monuments
+    .filter(m => m.created_at || m.updated_at)
+    .map(m => ({
+      action: m.created_at ? "Added new monument" : "Updated monument",
+      item: m.name ?? "Unnamed Monument",
+      user: "Admin",
+      time: m.updated_at || m.created_at || "Recently",
+      icon: "plus-circle"
+    })),
+  ...submonuments
+    .filter(s => s.created_at || s.updated_at)
+    .map(s => ({
+      action: s.created_at ? "Added new submonument" : "Updated submonument",
+      item: s.name ?? "Unnamed Submonument",
+      user: "Admin",
+      time: s.updated_at || s.created_at || "Recently",
+      icon: "plus-circle"
+    }))
+]
+.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+.slice(0, 4); // Limit to 4 recent activities
+---
+
+<AdminLayout title="Dashboard" activePage="dashboard">
+  <div class="admin-container">
+    <div class="admin-header">
+      <h1>Dashboard</h1>
+      <div class="header-actions">
+        <a href="/" class="admin-button admin-button-secondary admin-button-sm">
+          <span class="admin-button-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </span>
+          View Website
+        </a>
+      </div>
+    </div>
+    
+    <!-- Stats Section -->
+    <div class="admin-stats">
+      {statsData.map((stat) => (
+        <div class="stat-card">
+          <div class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              {stat.icon === 'monument' && (
+                <path d="M12 3L2 12h3v8h14v-8h3L12 3z M10 21v-6a2 2 0 0 1 4 0v6"></path>
+              )}
+              {stat.icon === 'map-pin' && (
+                <>
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </>
+              )}
+              {stat.icon === 'mail' && (
+                <>
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </>
+              )}
+              {stat.icon === 'users' && (
+                <>
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </>
+              )}
+            </svg>
+          </div>
+          <div class="stat-content">
+            <div class="stat-title">{stat.title}</div>
+            <div class="stat-value">{stat.count}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+    
+    <!-- Quick Actions Grid -->
+    <div class="admin-section">
+      <h2 class="section-title">Quick Actions</h2>
+      
+      <div class="quick-actions-grid">
+        {adminLinks.map((link) => (
+          <a href={link.link} class="quick-action-card">
+            <div class="quick-action-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                {link.icon === 'map-pin' && (
+                  <>
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </>
+                )}
+                {link.icon === 'edit' && (
+                  <>
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </>
+                )}
+                {link.icon === 'inbox' && (
+                  <>
+                    <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+                    <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+                  </>
+                )}
+                {link.icon === 'settings' && (
+                  <>
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l-.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                  </>
+                )}
+              </svg>
+            </div>
+            <div class="quick-action-content">
+              <h3>{link.title}</h3>
+              <p>{link.description}</p>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+    
+    <!-- Recent Map Activity -->
+    <div class="admin-section">
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h2>Recent Map Activity</h2>
+          <a href="/admin/map" class="admin-button admin-button-secondary admin-button-sm">View Map</a>
+        </div>
+        
+        <div class="activity-list">
+          {recentMapActivities.length > 0 ? (
+            recentMapActivities.map((activity) => (
+              <div class="activity-item">
+                <div class="activity-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    {activity.icon === 'plus-circle' && (
+                      <>
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                      </>
+                    )}
+                  </svg>
+                </div>
+                <div class="activity-content">
+                  <div class="activity-header">
+                    <span class="activity-action">{activity.action}</span>
+                    <span class="activity-time">{activity.time}</span>
+                  </div>
+                  <div class="activity-item-name">{activity.item}</div>
+                  <div class="activity-user">by {activity.user}</div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div class="activity-item">
+              <div class="activity-content">
+                <div class="activity-item-name">No recent map activity.</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+    
+    <!-- System Status -->
+    <div class="admin-section">
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h2>System Status</h2>
+        </div>
+        <div class="admin-card-body">
+          <div class="system-status-grid">
+            <div class="status-item">
+              <div class="status-header">
+                <h4>Firebase Connection</h4>
+                <span class="status-badge status-active">Connected</span>
+              </div>
+              <p>Last sync: Today at 12:45 PM</p>
+            </div>
+            
+            <div class="status-item">
+              <div class="status-header">
+                <h4>Google Maps API</h4>
+                <span class="status-badge status-active">Active</span>
+              </div>
+              <p>API Calls: 543 / 25,000 daily quota</p>
+            </div>
+            
+            <div class="status-item">
+              <div class="status-header">
+                <h4>Storage Usage</h4>
+                <span class="status-badge status-warning">72% Used</span>
+              </div>
+              <p>1.8 GB / 2.5 GB quota</p>
+            </div>
+            
+            <div class="status-item">
+              <div class="status-header">
+                <h4>Last Backup</h4>
+                <span class="status-badge status-active">Completed</span>
+              </div>
+              <p>Yesterday at 02:00 AM</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .admin-container {
+    padding: 2rem;
+  }
+  
+  .admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  
+  .admin-header h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 600;
+  }
+  
+  .section-title {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+  }
+  
+  .admin-section {
+    margin-bottom: 2.5rem;
+  }
+  
+  .quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .quick-action-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: var(--shadow-md);
+    padding: 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    text-decoration: none;
+    color: var(--text-color);
+    transition: all 0.2s ease;
+  }
+  
+  .quick-action-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .quick-action-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    background-color: rgba(194, 99, 75, 0.1);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+  
+  .quick-action-content {
+    flex-grow: 1;
+  }
+  
+  .quick-action-content h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+  
+  .quick-action-content p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-light);
+    line-height: 1.5;
+  }
+  
+  .activity-list {
+    border-top: 1px solid var(--border-color);
+  }
+  
+  .activity-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s ease;
+  }
+  
+  .activity-item:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+  
+  .activity-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: rgba(194, 99, 75, 0.1);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+  
+  .activity-content {
+    flex-grow: 1;
+  }
+  
+  .activity-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+  }
+  
+  .activity-action {
+    font-weight: 500;
+    color: var(--text-color);
+  }
+  
+  .activity-time {
+    font-size: 0.8125rem;
+    color: var(--text-light);
+  }
+  
+  .activity-item-name {
+    font-size: 0.9375rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  .activity-user {
+    font-size: 0.8125rem;
+    color: var(--text-light);
+  }
+  
+  .system-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .status-item {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 1.25rem;
+  }
+  
+  .status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  
+  .status-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  
+  .status-badge.status-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: var(--warning-color);
+  }
+  
+  .status-item p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-light);
+  }
+  
+  @media (max-width: 768px) {
+    .admin-container {
+      padding: 1.5rem;
+    }
+    
+    .admin-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    
+    .quick-actions-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .system-status-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

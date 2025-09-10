@@ -1,0 +1,193 @@
+---
+// Section wrapper component with various styles
+interface Props {
+  title?: string;
+  subtitle?: string;
+  background?: 'white' | 'light' | 'primary' | 'dark';
+  padding?: 'small' | 'medium' | 'large' | 'none';
+  container?: boolean;
+  centered?: boolean;
+  id?: string;
+  classes?: string;
+}
+
+const {
+  title,
+  subtitle,
+  background = 'white',
+  padding = 'medium',
+  container = true,
+  centered = false,
+  id,
+  classes = ''
+} = Astro.props;
+
+const bgClasses = {
+  white: 'bg-white',
+  light: 'bg-light',
+  primary: 'bg-primary',
+  dark: 'bg-dark'
+};
+
+const paddingClasses = {
+  none: 'py-0',
+  small: 'py-8',
+  medium: 'py-16',
+  large: 'py-24'
+};
+---
+
+<section 
+  id={id} 
+  class:list={[
+    'section', 
+    bgClasses[background], 
+    paddingClasses[padding], 
+    centered && 'text-center',
+    classes
+  ]}
+>
+  {container ? (
+    <div class="container">
+      {(title || subtitle) && (
+        <div class="section-header">
+          {title && <h2 class="section-title">{title}</h2>}
+          {subtitle && <p class="section-subtitle">{subtitle}</p>}
+        </div>
+      )}
+      <div class="section-content">
+        <slot />
+      </div>
+    </div>
+  ) : (
+    <>
+      {(title || subtitle) && (
+        <div class="section-header container">
+          {title && <h2 class="section-title">{title}</h2>}
+          {subtitle && <p class="section-subtitle">{subtitle}</p>}
+        </div>
+      )}
+      <div class="section-content">
+        <slot />
+      </div>
+    </>
+  )}
+</section>
+
+<style>
+  .section {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bg-white {
+    background-color: #ffffff;
+  }
+
+  .bg-light {
+    background-color: #f9f9f9;
+  }
+
+  .bg-primary {
+    background-color: #c2634b;
+    color: white;
+  }
+
+  .bg-dark {
+    background-color: #333333;
+    color: white;
+  }
+
+  .py-0 {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .py-8 {
+    padding-top: 32px;
+    padding-bottom: 32px;
+  }
+
+  .py-16 {
+    padding-top: 64px;
+    padding-bottom: 64px;
+  }
+
+  .py-24 {
+    padding-top: 96px;
+    padding-bottom: 96px;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .section-header {
+    margin-bottom: 40px;
+  }
+
+  .section-title {
+    font-size: 2rem;
+    margin-bottom: 16px;
+    position: relative;
+  }
+
+  .text-center .section-title::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background-color: #c2634b;
+  }
+
+  .bg-primary .section-title::after,
+  .bg-dark .section-title::after {
+    background-color: #ffffff;
+  }
+
+  .section-title:not(.text-center .section-title)::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background-color: #c2634b;
+  }
+
+  .section-subtitle {
+    font-size: 1.125rem;
+    max-width: 768px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  .text-center {
+    text-align: center;
+  }
+
+  @media (max-width: 768px) {
+    .py-16 {
+      padding-top: 48px;
+      padding-bottom: 48px;
+    }
+
+    .py-24 {
+      padding-top: 64px;
+      padding-bottom: 64px;
+    }
+
+    .section-title {
+      font-size: 1.75rem;
+    }
+
+    .section-subtitle {
+      font-size: 1rem;
+    }
+  }
+</style>

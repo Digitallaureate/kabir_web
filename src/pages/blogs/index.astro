@@ -1,0 +1,468 @@
+---
+import Layout from '../../components/layout/Layout.astro';
+import Section from '../../components/ui/Section.astro';
+import Grid from '../../components/ui/Grid.astro';
+import BlogCard from '../../components/ui/BlogCard.astro';
+import { getFirestore, collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import { app } from "../../utils/firebase";
+
+export const prerender = false;
+
+// Define interfaces for TypeScript
+interface BlogPost {
+  id: string;
+  title: string;
+  excerpt: string;
+  heroImage?: string;
+  slug: string;
+  publishDate: Date;
+  author: string;
+  category: string;
+  status: string;
+  featured?: boolean;
+}
+
+interface Category {
+  id: string;
+  name: string;
+}
+
+// Initialize Firestore
+const db = getFirestore(app);
+
+// Get URL parameters for filtering
+const { searchParams } = Astro.url;
+const categoryFilter = searchParams.get('category');
+const searchQuery = searchParams.get('search');
+const page = parseInt(searchParams.get('page') || '1');
+const postsPerPage = 9;
+
+// Build the query
+let blogQuery;
+if (categoryFilter) {
+  blogQuery = query(
+    collection(db, "blogs"),
+    where("status", "==", "published"),
+    where("category", "==", categoryFilter),
+    orderBy("publishDate", "desc")
+  );
+} else {
+  blogQuery = query(
+    collection(db, "blogs"),
+    where("status", "==", "published"),
+    orderBy("publishDate", "desc")
+  );
+}
+
+// Execute the query
+const querySnapshot = await getDocs(blogQuery);
+let blogPosts: BlogPost[] = [];
+
+// Process the results
+querySnapshot.forEach((doc) => {
+  blogPosts.push({
+    id: doc.id,
+    ...doc.data(),
+    publishDate: doc.data().publishDate?.toDate() || new Date(),
+  } as BlogPost);
+});
+
+// Apply search filter if provided
+if (searchQuery) {
+  const search = searchQuery.toLowerCase();
+  blogPosts = blogPosts.filter(post => 
+    post.title.toLowerCase().includes(search) || 
+    post.excerpt.toLowerCase().includes(search)
+  );
+}
+
+// Get total number of filtered posts
+const totalPosts = blogPosts.length;
+const totalPages = Math.ceil(totalPosts / postsPerPage);
+
+// Apply pagination
+const startIndex = (page - 1) * postsPerPage;
+const paginatedPosts = blogPosts.slice(startIndex, startIndex + postsPerPage);
+
+// Fetch featured posts
+const featuredPostsQuery = query(
+  collection(db, "blogs"),
+  where("status", "==", "published"),
+  where("featured", "==", true),
+  orderBy("publishDate", "desc"),
+  limit(3)
+);
+
+const featuredSnapshot = await getDocs(featuredPostsQuery);
+const featuredPosts: BlogPost[] = [];
+featuredSnapshot.forEach((doc) => {
+  featuredPosts.push({
+    id: doc.id,
+    ...doc.data(),
+    publishDate: doc.data().publishDate?.toDate() || new Date(),
+  } as BlogPost);
+});
+
+// Fetch all categories
+const categoriesQuery = query(collection(db, "categories"), orderBy("name"));
+const categoriesSnapshot = await getDocs(categoriesQuery);
+const categories: Category[] = [];
+categoriesSnapshot.forEach((doc) => {
+  categories.push({
+    id: doc.id,
+    ...doc.data(),
+  } as Category);
+});
+
+// Prepare page title based on filters
+let pageTitle = "Blogs";
+if (categoryFilter) {
+  const selectedCategory = categories.find(c => c.id === categoryFilter);
+  pageTitle = `${selectedCategory?.name || categoryFilter} Articles`;
+} else if (searchQuery) {
+  pageTitle = `Search: ${searchQuery}`;
+}
+---
+
+<Layout title={pageTitle} description="Explore our blog for insights on Agra's rich cultural heritage and historical monuments.">
+  <!-- Hero Section -->
+  <Section background="primary" padding="large" classes="blog-hero">
+    <div class="blog-hero-content">
+      <h1>{categoryFilter 
+        ? `${categories.find(c => c.id === categoryFilter)?.name || categoryFilter} Articles` 
+        : "Our Blog"}</h1>
+      <p class="subtitle">
+        {categoryFilter 
+          ? `Explore our articles about ${categories.find(c => c.id === categoryFilter)?.name || categoryFilter}`
+          : "Discover stories, insights, and information about Agra's rich cultural heritage"}
+      </p>
+      
+      <!-- Search Bar -->
+      <form class="search-form" method="get">
+        <div class="search-bar">
+          <input 
+            type="text" 
+            name="search" 
+            placeholder="Search articles..." 
+            value={searchQuery || ""}
+          />
+          <button type="submit" aria-label="Search">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </button>
+        </div>
+      </form>
+      
+      <!-- Categories -->
+      <div class="category-filter">
+        <a href="/blogs" class={!categoryFilter ? "category-btn active" : "category-btn"}>All</a>
+        {categories.map((category) => (
+          <a 
+            href={`/blogs?category=${category.id}`} 
+            class={categoryFilter === category.id ? "category-btn active" : "category-btn"}
+          >
+            {category.name}
+          </a>
+        ))}
+      </div>
+    </div>
+  </Section>
+
+  <!-- Featured Posts Section (Show only on first page with no filters) -->
+  {(!categoryFilter && !searchQuery && page === 1 && featuredPosts.length > 0) && (
+    <Section title="Featured Posts" background="white" padding="large">
+      <Grid columns={{ mobile: 1, tablet: 2, desktop: 3 }}>
+        {featuredPosts.map((post) => (
+          <BlogCard
+            title={post.title}
+            excerpt={post.excerpt}
+            imageUrl={post.heroImage || "/assets/images/blog-placeholder.jpg"}
+            slug={post.slug}
+            date={post.publishDate.toISOString()}
+            author={post.author}
+            categories={[categories.find(c => c.id === post.category)?.name || 'Uncategorized']}
+            variant="default"
+          />
+        ))}
+      </Grid>
+    </Section>
+  )}
+
+  <!-- Main Blog Posts Section -->
+  <Section 
+    title={searchQuery ? `Search Results for "${searchQuery}"` : (categoryFilter ? undefined : "Latest Articles")}
+    subtitle={totalPosts === 0 ? "No posts found. Please try a different search or category." : undefined}
+    background="light" 
+    padding="large"
+  >
+    {paginatedPosts.length > 0 && (
+      <Grid columns={{ mobile: 1, tablet: 2, desktop: 3 }}>
+        {paginatedPosts.map((post) => (
+          <BlogCard
+            title={post.title}
+            excerpt={post.excerpt}
+            imageUrl={post.heroImage || "/assets/images/blog-placeholder.jpg"}
+            slug={post.slug}
+            date={post.publishDate.toISOString()}
+            author={post.author}
+            categories={[categories.find(c => c.id === post.category)?.name || 'Uncategorized']}
+          />
+        ))}
+      </Grid>
+    )}
+    
+    <!-- Pagination -->
+    {totalPages > 1 && (
+      <div class="pagination">
+        <div class="pagination-info">
+          Showing {startIndex + 1}-{Math.min(startIndex + postsPerPage, totalPosts)} of {totalPosts} posts
+        </div>
+        <div class="pagination-controls">
+          {page > 1 && (
+            <a 
+              href={`/blogs?${new URLSearchParams({
+                ...(categoryFilter && { category: categoryFilter }),
+                ...(searchQuery && { search: searchQuery }),
+                page: (page - 1).toString()
+              })}`} 
+              class="pagination-btn"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+              Previous
+            </a>
+          )}
+          
+          <div class="pagination-pages">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+              <a 
+                href={`/blogs?${new URLSearchParams({
+                  ...(categoryFilter && { category: categoryFilter }),
+                  ...(searchQuery && { search: searchQuery }),
+                  page: pageNum.toString()
+                })}`}
+                class={pageNum === page ? "pagination-page active" : "pagination-page"}
+              >
+                {pageNum}
+              </a>
+            ))}
+          </div>
+          
+          {page < totalPages && (
+            <a 
+              href={`/blogs?${new URLSearchParams({
+                ...(categoryFilter && { category: categoryFilter }),
+                ...(searchQuery && { search: searchQuery }),
+                page: (page + 1).toString()
+              })}`} 
+              class="pagination-btn"
+            >
+              Next
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </a>
+          )}
+        </div>
+      </div>
+    )}
+  </Section>
+</Layout>
+
+<style>
+  .blog-hero {
+    text-align: center;
+    color: white;
+  }
+  
+  .blog-hero-content {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  .blog-hero h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    text-align: center
+  }
+  
+  .subtitle {
+    font-size: 1.25rem;
+    opacity: 0.9;
+    margin-bottom: 2rem;
+  }
+  
+  .search-form {
+    margin-bottom: 2rem;
+  }
+  
+  .search-bar {
+    display: flex;
+    max-width: 600px;
+    margin: 0 auto;
+    background-color: white;
+    border-radius: 50px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .search-bar input {
+    flex: 1;
+    padding: 1rem 1.5rem;
+    border: none;
+    font-size: 1rem;
+    outline: none;
+  }
+  
+  .search-bar button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0 1.5rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .search-bar button:hover {
+    background-color: var(--primary-dark);
+  }
+  
+  .category-filter {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  
+  .category-btn {
+    padding: 0.5rem 1rem;
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 50px;
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+  }
+  
+  .category-btn:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  .category-btn.active {
+    background-color: white;
+    color: var(--primary-color);
+    font-weight: 500;
+  }
+  
+  .pagination {
+    margin-top: 3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .pagination-info {
+    color: var(--text-light);
+    font-size: 0.875rem;
+  }
+  
+  .pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .pagination-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+  }
+  
+  .pagination-btn:hover {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+  }
+  
+  .pagination-pages {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .pagination-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    background-color: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+  }
+  
+  .pagination-page:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+  
+  .pagination-page.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+  }
+  
+  @media (max-width: 768px) {
+    .blog-hero h1 {
+      font-size: 2.25rem;
+    }
+    
+    .subtitle {
+      font-size: 1.1rem;
+    }
+    
+    .category-filter {
+      gap: 0.5rem;
+    }
+    
+    .pagination-controls {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .blog-hero h1 {
+      font-size: 1.85rem;
+    }
+    
+    .search-bar {
+      flex-direction: column;
+      border-radius: 8px;
+    }
+    
+    .search-bar button {
+      padding: 0.75rem;
+    }
+    
+    .pagination-pages {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  }
+</style>

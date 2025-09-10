@@ -1,0 +1,66 @@
+---
+interface Props {
+  id?: string;
+  type?: string;
+  value?: string | number;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+  step?: string;
+  class?: string;
+}
+
+const { 
+  id, 
+  type = 'text', 
+  value = '', 
+  placeholder = '', 
+  required = false, 
+  disabled = false,
+  step,
+  class: className = ''
+} = Astro.props;
+---
+
+<input 
+  id={id}
+  type={type}
+  value={value}
+  placeholder={placeholder}
+  required={required}
+  disabled={disabled}
+  step={step}
+  class:list={[
+    'input',
+    className
+  ]}
+/>
+
+<style>
+  .input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #4a2c0f;
+    border-radius: 4px;
+    background-color: #f5e6c7;
+    color: #4a2c0f;
+    font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .input:focus {
+    outline: none;
+    border-color: #7b4e1f;
+    box-shadow: 0 0 0 2px rgba(123, 78, 31, 0.2);
+  }
+
+  .input:disabled {
+    background-color: #e6e6e6;
+    color: #999;
+    cursor: not-allowed;
+  }
+
+  .input::placeholder {
+    color: #8b7355;
+  }
+</style>

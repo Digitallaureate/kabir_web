@@ -1,0 +1,140 @@
+---
+interface Props {
+  onZoomChange?: (level: string) => void;
+  onLayerToggle?: (layer: string, visible: boolean) => void;
+}
+
+const { onZoomChange, onLayerToggle } = Astro.props;
+
+// Define zoom levels and layers
+const zoomLevels = [
+  { id: "city", label: "City View" },
+  { id: "monument", label: "Monument View" },
+  { id: "street", label: "Street View" },
+];
+
+const layers = [
+  { id: "cities", label: "Cities" },
+  { id: "monuments", label: "Monuments" },
+  { id: "submonuments", label: "Sub-monuments" },
+  { id: "tours", label: "Tours" },
+  { id: "extendedTours", label: "Extended Tours" },
+  { id: "routes", label: "Routes" },
+];
+---
+
+<div class="map-controls">
+  <div class="control-section">
+    <h4>Zoom Level</h4>
+    <div class="zoom-buttons">
+      {zoomLevels.map((level) => (
+        <button
+          class="zoom-btn"
+          data-zoom={level.id}
+          onclick={`window.dispatchEvent(new CustomEvent('zoomChange', { detail: '${level.id}' }))`}
+        >
+          {level.label}
+        </button>
+      ))}
+    </div>
+  </div>
+
+  <div class="control-section">
+    <h4>Layers</h4>
+    <div class="layer-toggles">
+      {layers.map((layer) => (
+        <label class="toggle-label">
+          <input
+            type="checkbox"
+            id={`toggle-${layer.id}`}
+            checked
+            onchange={`window.dispatchEvent(new CustomEvent('layerToggle', { detail: { layer: '${layer.id}', visible: this.checked } }))`}
+          />
+          <span class="toggle-text">{layer.label}</span>
+        </label>
+      ))}
+    </div>
+  </div>
+</div>
+
+<style>
+  .map-controls {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .control-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .control-section h4 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 0.75rem;
+  }
+
+  .zoom-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .zoom-btn {
+    padding: 0.5rem 1rem;
+    background: #e2e8f0;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    color: #4a5568;
+    cursor: pointer;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  .zoom-btn:hover,
+  .zoom-btn.active {
+    background: #4a5568;
+    color: #ffffff;
+  }
+
+  .layer-toggles {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    color: #4a5568;
+    cursor: pointer;
+  }
+
+  .toggle-label input[type="checkbox"] {
+    margin-right: 0.5rem;
+    transform: scale(1.2);
+  }
+
+  .toggle-text {
+    font-weight: 500;
+  }
+</style>
+
+<script>
+  // Handle zoom button active state
+  document.addEventListener('zoomChange', (e) => {
+    const zoomLevel = e.detail;
+    document.querySelectorAll('.zoom-btn').forEach((btn) => {
+      btn.classList.remove('active');
+      if (btn.dataset.zoom === zoomLevel) {
+        btn.classList.add('active');
+      }
+    });
+  });
+</script>

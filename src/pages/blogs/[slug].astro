@@ -1,0 +1,1049 @@
+---
+import Layout from '../../components/layout/Layout.astro';
+import Section from '../../components/ui/Section.astro';
+import Button from '../../components/Button.astro';
+import { getFirestore, collection, doc, getDoc, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import { app } from "../../utils/firebase";
+
+export const prerender = false;
+
+// Define interfaces for TypeScript
+interface BlogPost {
+  id: string;
+  title: string;
+  excerpt: string;
+  heroImage?: string;
+  slug: string;
+  publishDate: Date;
+  formattedDate?: string;
+  author: string;
+  category: string;
+  status: string;
+  featured?: boolean;
+  content: { blocks: ContentBlock[] };
+  tags?: string[];
+  seo?: { title?: string; description?: string };
+}
+
+interface Category {
+  id: string;
+  name: string;
+}
+
+interface ContentBlock {
+  type: string;
+  data: {
+    text?: string;
+    level?: number;
+    style?: string;
+    items?: string[];
+    file?: { url: string };
+    caption?: string;
+    embed?: string;
+  };
+}
+
+// Get the slug from the URL parameters
+const { slug } = Astro.params;
+
+// Initialize Firestore
+const db = getFirestore(app);
+
+// Fetch the blog post data
+let post: BlogPost | null = null;
+let relatedPosts: BlogPost[] = [];
+let category: Category | null = null;
+
+// Search for the blog by slug
+if (slug) {
+  const blogsQuery = query(
+    collection(db, "blogs"),
+    where("slug", "==", slug),
+    where("status", "==", "published"),
+    limit(1)
+  );
+  
+  const querySnapshot = await getDocs(blogsQuery);
+  
+  if (!querySnapshot.empty) {
+    const blogDoc = querySnapshot.docs[0];
+    post = { 
+      id: blogDoc.id, 
+      ...blogDoc.data(),
+      publishDate: blogDoc.data().publishDate?.toDate() || new Date(),
+    } as BlogPost;
+    
+    // Format the date
+    const publishDate = post.publishDate;
+    post.formattedDate = publishDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    // Parse content if it's stored as a string
+    if (typeof post.content === 'string') {
+      try {
+        post.content = JSON.parse(post.content);
+      } catch (e) {
+        console.error("Error parsing blog content:", e);
+        post.content = { blocks: [] };
+      }
+    }
+    
+    // Fetch category info
+    if (post.category) {
+      const categoryDoc = await getDoc(doc(db, "categories", post.category));
+      if (categoryDoc.exists()) {
+        category = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
+      }
+    }
+    
+    // Fetch related posts in the same category
+    if (post.category) {
+      const relatedQuery = query(
+        collection(db, "blogs"),
+        where("category", "==", post.category),
+        where("status", "==", "published"),
+        where("slug", "!=", slug),
+        orderBy("slug"),
+        orderBy("publishDate", "desc"),
+        limit(3)
+      );
+      
+      const relatedSnapshot = await getDocs(relatedQuery);
+      relatedPosts = relatedSnapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data(),
+        publishDate: doc.data().publishDate?.toDate() || new Date()
+      } as BlogPost));
+    }
+  }
+}
+
+// If post doesn't exist, redirect to blog listing page
+if (!post) {
+  return Astro.redirect('/blogs');
+}
+
+// Prepare SEO metadata
+const seoTitle = post.seo?.title || post.title;
+const seoDescription = post.seo?.description || post.excerpt;
+---
+
+<Layout title={seoTitle} description={seoDescription}>
+  <div class="blog-single">
+    {post.heroImage && (
+      <div class="blog-hero" style={`background-image: url(${post.heroImage})`}>
+        <div class="hero-overlay"></div>
+        <div class="container">
+          <div class="hero-content">
+            <div class="post-meta">
+              {category && <span class="post-category">{category.name}</span>}
+              <span class="post-date">{post.formattedDate}</span>
+            </div>
+            <h1 class="post-title">{post.title}</h1>
+            <div class="post-author">By {post.author}</div>
+          </div>
+        </div>
+      </div>
+    )}
+    
+    {!post.heroImage && (
+      <div class="container blog-header">
+        <div class="post-meta">
+          {category && <span class="post-category">{category.name}</span>}
+          <span class="post-date">{post.formattedDate}</span>
+        </div>
+        <h1 class="post-title">{post.title}</h1>
+        <div class="post-author">By {post.author}</div>
+      </div>
+    )}
+
+    <div class="container blog-content">
+      <div class="blog-content-inner">
+        {post.excerpt && <div class="post-excerpt">{post.excerpt}</div>}
+        
+        <div class="post-content">
+          {post.content?.blocks?.map((block: ContentBlock) => {
+            if (block.type === 'paragraph') {
+              return <p set:html={block.data.text}></p>
+            } else if (block.type === 'header') {
+              if (block.data.level === 2) {
+                return <h2 set:html={block.data.text}></h2>
+              } else if (block.data.level === 3) {
+                return <h3 set:html={block.data.text}></h3>
+              } else if (block.data.level === 4) {
+                return <h4 set:html={block.data.text}></h4>
+              }
+            } else if (block.type === 'list') {
+              if (block.data.style === 'ordered') {
+                return (
+                  <ol>
+                    {block.data.items?.map((item: string) => <li set:html={item}></li>)}
+                  </ol>
+                )
+              } else {
+                return (
+                  <ul>
+                    {block.data.items?.map((item: string) => <li set:html={item}></li>)}
+                  </ul>
+                )
+              }
+            } else if (block.type === 'image') {
+              return (
+                <figure class="post-image">
+                  <img src={block.data.file?.url} alt={block.data.caption || ''} loading="lazy" />
+                  {block.data.caption && <figcaption>{block.data.caption}</figcaption>}
+                </figure>
+              )
+            } else if (block.type === 'quote') {
+              return (
+                <blockquote>
+                  <p set:html={block.data.text}></p>
+                  {block.data.caption && <cite>— {block.data.caption}</cite>}
+                </blockquote>
+              )
+            } else if (block.type === 'embed') {
+              return <div class="embed-container" set:html={block.data.embed}></div>
+            }
+            return null;
+          })}
+        </div>
+        
+        {post.tags && post.tags.length > 0 && (
+          <div class="post-tags">
+            {post.tags.map((tag: string) => (
+              <a href={`/tags/${tag.toLowerCase()}`} class="post-tag">{tag}</a>
+            ))}
+          </div>
+        )}
+      </div>
+      
+      {relatedPosts.length > 0 && (
+        <aside class="blog-sidebar">
+          <div class="sidebar-section">
+            <h3 class="sidebar-title">Related Posts</h3>
+            <div class="related-posts">
+              {relatedPosts.map((relatedPost: BlogPost) => (
+                <div class="related-post">
+                  {relatedPost.heroImage && (
+                    <a href={`/blogs/${relatedPost.slug}`} class="related-post-image">
+                      <img src={relatedPost.heroImage} alt={relatedPost.title} loading="lazy" />
+                    </a>
+                  )}
+                  <div class="related-post-content">
+                    <h4><a href={`/blogs/${relatedPost.slug}`}>{relatedPost.title}</a></h4>
+                    <div class="related-post-date">
+                      {relatedPost.publishDate.toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      )}
+    </div>
+    
+    <Section background="light" padding="medium" classes="blog-footer">
+      <div class="blog-navigation">
+        <Button text="Back to Blog" href="/blogs" variant="outline" size="medium" />
+        
+        {post.featured && (
+          <div class="featured-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+            Featured Post
+          </div>
+        )}
+      </div>
+    </Section>
+  </div>
+</Layout>
+
+<style>
+  :root {
+    --primary-color: #c2634b;
+    --text-color: #333;
+    --text-light: #666;
+    --border-color: #e0e0e0;
+  }
+
+  .blog-single {
+    margin-bottom: 1.5rem;
+    width: 100%;
+    overflow-x: hidden;
+  }
+  
+  .blog-hero {
+    position: relative;
+    height: 500px;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: flex-end;
+    color: white;
+    width: 100%;
+    overflow-x: hidden;
+  }
+  
+  .hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.7) 100%);
+    z-index: 1;
+  }
+  
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    padding-bottom: 2rem;
+    max-width: 800px;
+    width: 100%;
+  }
+  
+  .blog-header {
+    padding: 2rem 0 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+    width: 100%;
+  }
+  
+  .post-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .post-category {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    line-height: 1.2;
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+  }
+  
+  .post-date {
+    color: var(--text-light);
+    font-size: 0.9rem;
+  }
+  
+  .hero-content .post-date {
+    color: rgba(255, 255, 255, 0.8);
+  }
+  
+  .post-title {
+    font-size: 2.5rem;
+    line-height: 1.2;
+    margin-bottom: 0.75rem;
+    font-weight: 700;
+  }
+  
+  .post-author {
+    font-size: 1rem;
+    color: var(--text-light);
+  }
+  
+  .hero-content .post-author {
+    color: rgba(255, 255, 255, 0.8);
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+  
+  .blog-content {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 2rem;
+    margin: 2rem auto;
+    width: 100%;
+    overflow-x: hidden;
+  }
+  
+  .blog-content-inner {
+    max-width: 800px;
+    width: 100%;
+  }
+  
+  .post-excerpt {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: var(--text-color);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .post-content {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--text-color);
+    width: 100%;
+    overflow-x: hidden;
+  }
+  
+  .post-content p {
+    margin-bottom: 1.25rem;
+    word-break: break-word;
+  }
+  
+  .post-content h2 {
+    font-size: 1.75rem;
+    margin: 2rem 0 0.75rem;
+  }
+  
+  .post-content h3 {
+    font-size: 1.5rem;
+    margin: 1.75rem 0 0.75rem;
+  }
+  
+  .post-content h4 {
+    font-size: 1.25rem;
+    margin: 1.5rem 0 0.75rem;
+  }
+  
+  .post-content ul, .post-content ol {
+    margin-bottom: 1.25rem;
+    padding-left: 1.5rem;
+  }
+  
+  .post-content li {
+    margin-bottom: 0.5rem;
+  }
+  
+  .post-image {
+    margin: 1.5rem 0;
+    border-radius: 8px;
+    overflow: hidden;
+    width: 100%;
+  }
+  
+  .post-image img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+  
+  .post-image figcaption {
+    padding: 0.5rem;
+    background-color: #f5f5f5;
+    font-size: 0.85rem;
+    color: var(--text-light);
+    font-style: italic;
+    text-align: center;
+  }
+  
+  .post-content blockquote {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    border-left: 4px solid var(--primary-color);
+    background-color: #f9f9f9;
+    font-style: italic;
+    width: 100%;
+  }
+  
+  .post-content blockquote p {
+    margin-bottom: 0.5rem;
+  }
+  
+  .post-content blockquote cite {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-light);
+    text-align: right;
+  }
+  
+  .embed-container {
+    margin: 1.5rem 0;
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+    overflow: hidden;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .embed-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+  }
+  
+  .post-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    width: 100%;
+  }
+  
+  .post-tag {
+    padding: 0.25rem 0.75rem;
+    background-color: #f0f0f0;
+    color: var(--text-light);
+    font-size: 0.85rem;
+    border-radius: 50px;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+    min-height: 32px;
+    min-width: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .post-tag:hover {
+    background-color: #e0e0e0;
+  }
+  
+  .blog-sidebar {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  
+  .sidebar-section {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    width: 100%;
+  }
+  
+  .sidebar-title {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--primary-color);
+    color: var(--text-color);
+  }
+  
+  .related-posts {
+    width: 100%;
+    overflow-x: hidden;
+  }
+  
+  .related-post {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .related-post:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+  
+  .related-post-image {
+    flex: 0 0 60px;
+    height: 60px;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  
+  .related-post-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .related-post-content {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .related-post-content h4 {
+    font-size: 0.95rem;
+    margin: 0 0 0.25rem;
+    line-height: 1.4;
+  }
+  
+  .related-post-content h4 a {
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color 0.2s ease;
+    display: inline-block;
+    min-height: 44px;
+    line-height: 1.4;
+  }
+  
+  .related-post-content h4 a:hover {
+    color: var(--primary-color);
+  }
+  
+  .related-post-date {
+    font-size: 0.75rem;
+    color: var(--text-light);
+  }
+  
+  .blog-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+  }
+  
+  .featured-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    min-height: 44px;
+  }
+  
+  /* Mobile Optimizations */
+  @media (max-width: 900px) {
+    .blog-content {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin: 1.5rem auto;
+    }
+    
+    .blog-content-inner {
+      max-width: 100%;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .blog-hero {
+      height: 350px;
+    }
+    
+    .hero-content {
+      padding-bottom: 1.5rem;
+    }
+    
+    .blog-header {
+      padding: 1.5rem 0 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .post-title {
+      font-size: 1.75rem;
+    }
+    
+    .post-meta {
+      gap: 0.5rem;
+    }
+    
+    .post-category {
+      font-size: 0.8rem;
+      padding: 0.2rem 0.6rem;
+      min-height: 28px;
+    }
+    
+    .post-date {
+      font-size: 0.85rem;
+    }
+    
+    .hero-content .post-date {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .post-author {
+      font-size: 0.9rem;
+    }
+    
+    .hero-content .post-author {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .post-excerpt {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+    }
+    
+    .post-content {
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+    
+    .post-content h2 {
+      font-size: 1.5rem;
+      margin: 1.5rem 0 0.5rem;
+    }
+    
+    .post-content h3 {
+      font-size: 1.25rem;
+      margin: 1.25rem 0 0.5rem;
+    }
+    
+    .post-content h4 {
+      font-size: 1.1rem;
+      margin: 1rem 0 0.5rem;
+    }
+    
+    .post-content ul, .post-content ol {
+      padding-left: 1.25rem;
+    }
+    
+    .post-image {
+      margin: 1rem 0;
+    }
+    
+    .post-image img {
+      max-width: 100%;
+      height: auto;
+    }
+    
+    .post-image figcaption {
+      font-size: 0.8rem;
+    }
+    
+    .post-content blockquote {
+      padding: 0.75rem;
+      margin: 1rem 0;
+    }
+    
+    .embed-container {
+      margin: 1rem 0;
+    }
+    
+    .post-tags {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      gap: 0.4rem;
+    }
+    
+    .post-tag {
+      font-size: 0.8rem;
+      padding: 0.3rem 0.8rem;
+      min-height: 36px;
+      min-width: 48px;
+    }
+    
+    .sidebar-section {
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .sidebar-title {
+      font-size: 1.1rem;
+      margin-bottom: 0.75rem;
+    }
+    
+    .related-post {
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.75rem;
+    }
+    
+    .related-post-image {
+      flex: 0 0 50px;
+      height: 50px;
+    }
+    
+    .related-post-content h4 {
+      font-size: 0.9rem;
+    }
+    
+    .related-post-content h4 a {
+      min-height: 48px;
+      line-height: 1.4;
+    }
+    
+    .related-post-date {
+      font-size: 0.7rem;
+    }
+    
+    .blog-navigation {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    
+    .featured-badge {
+      font-size: 0.85rem;
+      padding: 0.5rem 0.75rem;
+      min-height: 48px;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .container {
+      padding: 0 0.75rem;
+    }
+    
+    .blog-hero {
+      height: 250px;
+    }
+    
+    .hero-content {
+      padding-bottom: 1rem;
+    }
+    
+    .blog-header {
+      padding: 1rem 0 0.75rem;
+    }
+    
+    .post-title {
+      font-size: 1.5rem;
+    }
+    
+    .post-meta {
+      gap: 0.4rem;
+    }
+    
+    .post-category {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      min-height: 32px;
+    }
+    
+    .post-date {
+      font-size: 0.8rem;
+    }
+    
+    .hero-content .post-date {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .post-author {
+      font-size: 0.85rem;
+    }
+    
+    .hero-content .post-author {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .post-excerpt {
+      font-size: 1rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.75rem;
+    }
+    
+    .post-content {
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    
+    .post-content h2 {
+      font-size: 1.25rem;
+      margin: 1.25rem 0 0.4rem;
+    }
+    
+    .post-content h3 {
+      font-size: 1.1rem;
+      margin: 1rem 0 0.4rem;
+    }
+    
+    .post-content h4 {
+      font-size: 1rem;
+      margin: 0.75rem 0 0.4rem;
+    }
+    
+    .post-content ul, .post-content ol {
+      padding-left: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .post-content li {
+      margin-bottom: 0.3rem;
+    }
+    
+    .post-image {
+      margin: 0.75rem 0;
+    }
+    
+    .post-image img {
+      max-width: 100%;
+      height: auto;
+    }
+    
+    .post-image figcaption {
+      font-size: 0.8rem;
+      padding: 0.4rem;
+    }
+    
+    .post-content blockquote {
+      padding: 0.5rem;
+      margin: 0.75rem 0;
+    }
+    
+    .post-content blockquote p {
+      font-size: 0.95rem;
+    }
+    
+    .post-content blockquote cite {
+      font-size: 0.8rem;
+    }
+    
+    .embed-container {
+      margin: 0.75rem 0;
+    }
+    
+    .post-tags {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      gap: 0.3rem;
+    }
+    
+    .post-tag {
+      font-size: 0.75rem;
+      padding: 0.3rem 0.8rem;
+      min-height: 40px;
+      min-width: 48px;
+    }
+    
+    .sidebar-section {
+      padding: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    
+    .sidebar-title {
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .related-post {
+      gap: 0.4rem;
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+    
+    .related-post-image {
+      flex: 0 0 40px;
+      height: 40px;
+    }
+    
+    .related-post-content h4 {
+      font-size: 0.85rem;
+    }
+    
+    .related-post-content h4 a {
+      min-height: 48px;
+      line-height: 1.4;
+    }
+    
+    .related-post-date {
+      font-size: 0.65rem;
+    }
+    
+    .blog-navigation {
+      gap: 0.75rem;
+    }
+    
+    .featured-badge {
+      font-size: 0.85rem;
+      padding: 0.4rem 0.75rem;
+      min-height: 48px;
+    }
+    
+    .featured-badge svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+  
+  @media (max-width: 320px) {
+    .container {
+      padding: 0 0.5rem;
+    }
+    
+    .blog-hero {
+      height: 200px;
+    }
+    
+    .post-title {
+      font-size: 1.25rem;
+    }
+    
+    .post-meta {
+      gap: 0.3rem;
+    }
+    
+    .post-category {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.6rem;
+      min-height: 36px;
+    }
+    
+    .post-date {
+      font-size: 0.75rem;
+    }
+    
+    .hero-content .post-date {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .post-author {
+      font-size: 0.8rem;
+    }
+    
+    .hero-content .post-author {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .post-excerpt {
+      font-size: 0.9rem;
+    }
+    
+    .post-content {
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    
+    .post-content h2 {
+      font-size: 1.1rem;
+    }
+    
+    .post-content h3 {
+      font-size: 1rem;
+    }
+    
+    .post-content h4 {
+      font-size: 0.95rem;
+    }
+    
+    .post-tag {
+      font-size: 0.7rem;
+      padding: 0.3rem 0.8rem;
+      min-height: 44px;
+      min-width: 48px;
+    }
+  }
+</style>

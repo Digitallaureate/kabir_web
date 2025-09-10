@@ -1,0 +1,141 @@
+---
+// Multipurpose card component
+interface Props {
+  title?: string;
+  subtitle?: string;
+  imageUrl?: string;
+  imageAlt?: string;
+  href?: string;
+  variant?: 'default' | 'elevated' | 'outlined' | 'horizontal';
+  classes?: string;
+}
+
+const {
+  title,
+  subtitle,
+  imageUrl,
+  imageAlt = '',
+  href,
+  variant = 'default',
+  classes = ''
+} = Astro.props;
+
+const CardElement = href ? 'a' : 'div';
+---
+
+<CardElement 
+  href={href} 
+  class:list={['card', `card-${variant}`, classes]}
+>
+  {imageUrl && (
+    <div class="card-image">
+      <img src={imageUrl} alt={imageAlt} loading="lazy" />
+    </div>
+  )}
+  <div class="card-content">
+    {title && <h3 class="card-title">{title}</h3>}
+    {subtitle && <p class="card-subtitle">{subtitle}</p>}
+    <div class="card-body">
+      <slot />
+    </div>
+    <div class="card-footer">
+      <slot name="footer" />
+    </div>
+  </div>
+</CardElement>
+
+<style>
+  .card {
+    border-radius: 8px;
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .card-default {
+    background-color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .card-elevated {
+    background-color: #fff;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+
+  .card-outlined {
+    background-color: #fff;
+    border: 1px solid #e1e1e1;
+  }
+
+  .card-horizontal {
+    flex-direction: row;
+  }
+
+  .card-horizontal .card-image {
+    max-width: 40%;
+  }
+
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .card-image {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 16/9;
+  }
+
+  .card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+
+  .card:hover .card-image img {
+    transform: scale(1.05);
+  }
+
+  .card-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+
+  .card-title {
+    margin: 0 0 10px;
+    font-size: 20px;
+    color: #333;
+  }
+
+  .card-subtitle {
+    margin: 0 0 16px;
+    font-size: 14px;
+    color: #666;
+  }
+
+  .card-body {
+    flex-grow: 1;
+    margin-bottom: 16px;
+  }
+
+  .card-footer {
+    margin-top: auto;
+  }
+
+  @media (max-width: 768px) {
+    .card-horizontal {
+      flex-direction: column;
+    }
+
+    .card-horizontal .card-image {
+      max-width: 100%;
+    }
+  }
+</style>

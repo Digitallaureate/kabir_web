@@ -1,0 +1,65 @@
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { getStorage } from "firebase/storage";
+import { getAnalytics } from "firebase/analytics";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD3k3FLgH9nFHG8xFuRJDnesjVmkRkzPQU",
+  authDomain: "ecostory-site.firebaseapp.com",
+  projectId: "ecostory-site",
+  storageBucket: "ecostory-site.firebasestorage.app",
+  messagingSenderId: "36036911566",
+  appId: "1:36036911566:web:a1983a531840cb85d6cb9f",
+  measurementId: "G-FYJPT08842"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
+let analytics;
+if (typeof window !== 'undefined') {
+  analytics = getAnalytics(app);
+}
+
+export { app, db, auth, storage, analytics };
+
+
+
+
+
+
+
+
+
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { getStorage } from "firebase/storage";
+import { getAnalytics } from "firebase/analytics";
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyDwIP-2f_fvUdROoAH5KhMxcD5-6yaeT38",
+  authDomain: "ecostory-trial.firebaseapp.com",
+  projectId: "ecostory-trial",
+  storageBucket: "ecostory-trial.firebasestorage.app",
+  messagingSenderId: "1010923428127",
+  appId: "1:1010923428127:web:e077372f5e3e27992cf82a",
+  measurementId: "G-77MWPP4W8X"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
+
+// Only initialize analytics in browser environment
+let analytics = null;
+if (typeof window !== 'undefined') {
+  analytics = getAnalytics(app);
+}
+
+export { app, db, auth, storage, analytics };

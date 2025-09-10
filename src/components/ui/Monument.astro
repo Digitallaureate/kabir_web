@@ -1,0 +1,331 @@
+---
+// Monument card component for displaying historical monuments
+interface Props {
+  id: string;
+  name: string;
+  imageUrl: string;
+  period?: string;
+  location?: string;
+  description: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+  showMap?: boolean;
+  variant?: 'default' | 'compact' | 'detailed';
+  classes?: string;
+}
+
+const { 
+  id,
+  name, 
+  imageUrl,
+  period,
+  location,
+  description,
+  coordinates,
+  showMap = false,
+  variant = 'default',
+  classes = '' 
+} = Astro.props;
+---
+
+<div class:list={['monument-card', `monument-${variant}`, classes]} data-monument-id={id}>
+  <div class="monument-image">
+    <img src={imageUrl} alt={name} loading="lazy" />
+    {period && (
+      <div class="monument-period">{period}</div>
+    )}
+  </div>
+  
+  <div class="monument-content">
+    <h3 class="monument-name">{name}</h3>
+    
+    {location && (
+      <div class="monument-location">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+          <circle cx="12" cy="10" r="3"></circle>
+        </svg>
+        <span>{location}</span>
+      </div>
+    )}
+    
+    <p class="monument-description">{description}</p>
+    
+    {(variant === 'detailed' && coordinates && showMap) && (
+      <div class="monument-map" id={`map-${id}`} data-lat={coordinates.lat} data-lng={coordinates.lng}></div>
+    )}
+    
+    <div class="monument-actions">
+      <a href={`/monument/${id}`} class="monument-link">
+        View Details
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+      
+      {coordinates && (
+        <button class="monument-locate" data-lat={coordinates.lat} data-lng={coordinates.lng}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+          </svg>
+          <span>Locate</span>
+        </button>
+      )}
+    </div>
+  </div>
+</div>
+
+<script>
+  // Declare the Google Maps types for TypeScript
+  declare global {
+    interface Window {
+      google?: {
+        maps: {
+          Map: any;
+          Marker: any;
+          MapTypeId: {
+            ROADMAP: any;
+          };
+          Animation: {
+            DROP: any;
+          };
+        };
+      };
+    }
+  }
+
+  // This script will handle map rendering when Google Maps API is loaded
+  // and the "Locate" button click to pan to the monument on the main map
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize small maps for detailed variant if Google Maps is loaded
+    const initMonumentMaps = () => {
+      if (window.google && window.google.maps) {
+        document.querySelectorAll('.monument-map').forEach(mapElement => {
+          const lat = parseFloat(mapElement.getAttribute('data-lat') || '0');
+          const lng = parseFloat(mapElement.getAttribute('data-lng') || '0');
+          
+          if (lat && lng) {
+            const map = new window.google.maps.Map(mapElement as HTMLElement, {
+              center: { lat, lng },
+              zoom: 15,
+              mapTypeId: window.google.maps.MapTypeId.ROADMAP,
+              disableDefaultUI: true,
+              zoomControl: true,
+              scrollwheel: false
+            });
+            
+            new window.google.maps.Marker({
+              position: { lat, lng },
+              map: map,
+              animation: window.google.maps.Animation.DROP
+            });
+          }
+        });
+      }
+    };
+    
+    // Handle locate button clicks to communicate with parent map
+    document.querySelectorAll('.monument-locate').forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        const lat = parseFloat(button.getAttribute('data-lat') || '0');
+        const lng = parseFloat(button.getAttribute('data-lng') || '0');
+        const monumentId = button.closest('.monument-card')?.getAttribute('data-monument-id');
+        
+        // Dispatch custom event for the main map to catch
+        if (lat && lng && monumentId) {
+          const event = new CustomEvent('locate-monument', {
+            detail: { lat, lng, id: monumentId }
+          });
+          document.dispatchEvent(event);
+        }
+      });
+    });
+    
+    // Check if Google Maps API is loaded and initialize maps
+    if (window.google && window.google.maps) {
+      initMonumentMaps();
+    } else {
+      // If Google Maps is loading asynchronously, we might need to wait
+      window.addEventListener('google-maps-loaded', initMonumentMaps);
+    }
+  });
+</script>
+
+<style>
+  .monument-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+  }
+
+  .monument-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+  }
+
+  .monument-image {
+    position: relative;
+    aspect-ratio: 4/3;
+    overflow: hidden;
+  }
+
+  .monument-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+
+  .monument-card:hover .monument-image img {
+    transform: scale(1.05);
+  }
+
+  .monument-period {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background-color: rgba(194, 99, 75, 0.9);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .monument-content {
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    flex-grow: 1;
+  }
+
+  .monument-name {
+    font-size: 1.25rem;
+    margin: 0 0 0.75rem;
+    color: #333;
+  }
+
+  .monument-location {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.875rem;
+    color: #666;
+    margin-bottom: 1rem;
+  }
+
+  .monument-description {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #555;
+    margin-bottom: 1.5rem;
+  }
+
+  .monument-map {
+    width: 100%;
+    height: 200px;
+    margin-bottom: 1.5rem;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .monument-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+  }
+
+  .monument-link, .monument-locate {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .monument-link {
+    color: #c2634b;
+    text-decoration: none;
+  }
+
+  .monument-link:hover {
+    color: #ad5541;
+  }
+
+  .monument-link svg {
+    transition: transform 0.3s ease;
+  }
+
+  .monument-link:hover svg {
+    transform: translateX(4px);
+  }
+
+  .monument-locate {
+    background: none;
+    border: none;
+    color: #3d5a80;
+  }
+
+  .monument-locate:hover {
+    color: #304761;
+  }
+
+  /* Compact variant */
+  .monument-compact .monument-image {
+    aspect-ratio: 16/9;
+  }
+
+  .monument-compact .monument-content {
+    padding: 1rem;
+  }
+
+  .monument-compact .monument-name {
+    font-size: 1.125rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .monument-compact .monument-description {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+
+  /* Detailed variant */
+  .monument-detailed .monument-image {
+    aspect-ratio: 16/9;
+  }
+
+  .monument-detailed .monument-name {
+    font-size: 1.5rem;
+  }
+
+  .monument-detailed .monument-description {
+    margin-bottom: 1.5rem;
+  }
+
+  @media (max-width: 768px) {
+    .monument-name {
+      font-size: 1.2rem;
+    }
+
+    .monument-detailed .monument-name {
+      font-size: 1.35rem;
+    }
+  }
+</style>

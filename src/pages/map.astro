@@ -1,0 +1,192 @@
+---
+import Layout from '../components/layout/Layout.astro';
+---
+
+<Layout title="Explore History" description="Explore historical maps of Agra and beyond with Project Kabir.">
+  <div class="map-page">
+    <!-- Info tooltip section - moved to be visible -->
+    <div class="info-container">
+      <div class="info" id="infoToggle">
+        <div class="info-icon">i</div>
+        <div class="tooltip" id="infoTooltip">
+          This map is embedded from
+          <a href="https://www.oldmapsonline.org/" target="_blank"
+             rel="noopener noreferrer">
+            OldMapsOnline.org
+          </a>
+          —an external website. All credit to their data and interface.
+        </div>
+      </div>
+    </div>
+
+    <!-- Full-screen iframe -->
+    <div class="iframe-container">
+      <iframe
+        src="https://www.oldmapsonline.org/en/history/regions#position=0.5469/0/104.6&year=2004"
+        title="OldMapsOnline – Project Kabir"
+        class="map-iframe"
+        loading="lazy"
+      ></iframe>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  /* Full page layout - remove any padding/margin from layout */
+  :global(main) {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .map-page {
+    position: relative;
+    width: 100vw;
+    height: calc(100vh - 60px);
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  /* Info tooltip positioning - positioned over the map */
+  .info-container {
+    position: absolute;
+    top: 18px;
+    right: 230px;
+    z-index: 100;
+  }
+
+  .info {
+    position: relative;
+    cursor: pointer;
+  }
+
+  .info-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+  }
+
+  .info-icon:hover {
+    background: rgba(0, 0, 0, 0.9);
+  }
+
+  .tooltip {
+    position: absolute;
+    top: 32px;
+    right: 0;
+    width: 220px;
+    padding: 12px;
+    background: #fff;
+    color: #333;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 0.85rem;
+    line-height: 1.4;
+    display: none;
+    z-index: 101;
+  }
+
+  .tooltip::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: 12px;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-bottom: none;
+    border-right: none;
+    transform: rotate(45deg);
+  }
+
+  .tooltip a {
+    color: #0066cc;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .tooltip a:hover {
+    text-decoration: underline;
+  }
+
+  /* Iframe container */
+  .iframe-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  .map-iframe {
+    border: none;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .info-container {
+      top: 12px;
+      right: 12px;
+    }
+    
+    .tooltip {
+      width: 200px;
+      right: -8px;
+    }
+    
+    .tooltip::before {
+      right: 20px;
+    }
+  }
+</style>
+
+<script>
+  // Toggle the tooltip on click
+  function initializeInfoTooltip() {
+    const toggle = document.getElementById('infoToggle');
+    const tip = document.getElementById('infoTooltip');
+    
+    if (!toggle || !tip) return;
+
+    toggle.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      tip.style.display = tip.style.display === 'block' ? 'none' : 'block';
+    });
+    
+    // Click outside to close
+    document.addEventListener('click', (e) => {
+      if (!toggle.contains(e.target as Node)) {
+        tip.style.display = 'none';
+      }
+    });
+
+    // Close on escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        tip.style.display = 'none';
+      }
+    });
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeInfoTooltip);
+  } else {
+    initializeInfoTooltip();
+  }
+
+  // Reinitialize on navigation (for SPA-like behavior)
+  document.addEventListener('astro:page-load', initializeInfoTooltip);
+</script>

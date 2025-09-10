@@ -1,0 +1,220 @@
+---
+// Timeline component for historical events
+interface TimelineItem {
+  year: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+  imageAlt?: string;
+}
+
+interface Props {
+  items: TimelineItem[];
+  alternating?: boolean;
+  classes?: string;
+}
+
+const { items, alternating = true, classes = '' } = Astro.props;
+---
+
+<div class:list={['timeline', alternating && 'timeline-alternating', classes]}>
+  {items.map((item, index) => (
+    <div class:list={['timeline-item', alternating && (index % 2 === 0 ? 'timeline-left' : 'timeline-right')]}>
+      <div class="timeline-connector">
+        <div class="timeline-dot"></div>
+        <div class="timeline-line"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="timeline-year">{item.year}</div>
+        <h3 class="timeline-title">{item.title}</h3>
+        {item.imageUrl && (
+          <div class="timeline-image">
+            <img src={item.imageUrl} alt={item.imageAlt || item.title} loading="lazy" />
+          </div>
+        )}
+        <p class="timeline-description">{item.description}</p>
+      </div>
+    </div>
+  ))}
+</div>
+
+<style>
+  .timeline {
+    position: relative;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px 0;
+  }
+
+  .timeline:after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    background-color: #e1e1e1;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .timeline-item {
+    position: relative;
+    margin-bottom: 40px;
+    width: 100%;
+  }
+
+  .timeline-connector {
+    position: absolute;
+    top: 20px;
+    left: calc(50% - 10px);
+    z-index: 1;
+  }
+
+  .timeline-dot {
+    width: 20px;
+    height: 20px;
+    background-color: #c2634b;
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px rgba(194, 99, 75, 0.2);
+  }
+
+  .timeline-content {
+    position: relative;
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    width: calc(50% - 40px);
+    transition: transform 0.3s ease;
+  }
+
+  .timeline-content:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .timeline-alternating .timeline-left .timeline-content {
+    margin-left: auto;
+    margin-right: 40px;
+  }
+
+  .timeline-alternating .timeline-right .timeline-content {
+    margin-left: 40px;
+  }
+
+  .timeline-alternating .timeline-right .timeline-connector {
+    left: calc(50% - 10px);
+  }
+
+  .timeline-alternating .timeline-left .timeline-content:after {
+    content: '';
+    position: absolute;
+    top: 20px;
+    right: -10px;
+    width: 0;
+    height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-left: 10px solid #ffffff;
+  }
+
+  .timeline-alternating .timeline-right .timeline-content:after {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: -10px;
+    width: 0;
+    height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-right: 10px solid #ffffff;
+  }
+
+  .timeline-year {
+    display: inline-block;
+    font-weight: 600;
+    color: #c2634b;
+    margin-bottom: 8px;
+    font-size: 1rem;
+  }
+
+  .timeline-title {
+    font-size: 1.25rem;
+    margin: 0 0 15px;
+    color: #333;
+  }
+
+  .timeline-image {
+    margin-bottom: 15px;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .timeline-image img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+  }
+
+  .timeline-description {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #555;
+    margin: 0;
+  }
+
+  /* Non-alternating timeline (all items on one side) */
+  .timeline:not(.timeline-alternating):after {
+    left: 40px;
+  }
+
+  .timeline:not(.timeline-alternating) .timeline-item .timeline-connector {
+    left: 40px;
+  }
+
+  .timeline:not(.timeline-alternating) .timeline-item .timeline-content {
+    width: calc(100% - 90px);
+    margin-left: 90px;
+  }
+
+  .timeline:not(.timeline-alternating) .timeline-item .timeline-content:after {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: -10px;
+    width: 0;
+    height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-right: 10px solid #ffffff;
+  }
+
+  @media (max-width: 768px) {
+    .timeline:after {
+      left: 40px;
+    }
+
+    .timeline-alternating .timeline-item .timeline-connector {
+      left: 40px;
+    }
+
+    .timeline-alternating .timeline-item .timeline-content {
+      width: calc(100% - 90px);
+      margin-left: 90px;
+    }
+
+    .timeline-alternating .timeline-left .timeline-content,
+    .timeline-alternating .timeline-right .timeline-content {
+      margin-right: 0;
+      margin-left: 90px;
+    }
+
+    .timeline-alternating .timeline-left .timeline-content:after,
+    .timeline-alternating .timeline-right .timeline-content:after {
+      left: -10px;
+      right: auto;
+      border-right: 10px solid #ffffff;
+      border-left: 0;
+    }
+  }
+</style>

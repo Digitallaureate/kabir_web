@@ -1,0 +1,71 @@
+---
+const featureTypes = [
+  { id: "cities", label: "Cities", color: "#d4af37" },
+  { id: "monuments", label: "Monuments", color: "#a0522d" },
+  { id: "submonuments", label: "Sub-monuments", color: "#4682b4" },
+  { id: "tours", label: "Tours", color: "#2d5016" },
+  { id: "extendedTours", label: "Extended Tours", color: "#8b4513" },
+  { id: "routes", label: "Routes", color: "#800080" },
+];
+---
+
+<div class="legend">
+  <h4>Legend</h4>
+  <div class="legend-items">
+    {featureTypes.map((feature) => (
+      <div class="legend-item">
+        {feature.id.includes("cities") || feature.id.includes("monuments") || feature.id.includes("submonuments") ? (
+          <div class="legend-marker" style={`background-color: ${feature.color};`}></div>
+        ) : (
+          <div class="legend-line" style={`background-color: ${feature.color};`}></div>
+        )}
+        <span>{feature.label}</span>
+      </div>
+    ))}
+  </div>
+</div>
+
+<style>
+  .legend {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .legend h4 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 0.75rem;
+  }
+
+  .legend-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    color: #4a5568;
+  }
+
+  .legend-marker {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #2d3748;
+  }
+
+  .legend-line {
+    width: 30px;
+    height: 4px;
+    border-radius: 2px;
+  }
+</style>

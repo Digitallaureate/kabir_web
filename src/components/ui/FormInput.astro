@@ -1,0 +1,35 @@
+---
+const { label, id, type = 'text', value = '', required = false, options = [], multiple = false } = Astro.props;
+---
+
+<div class="form-group mb-4">
+  <label for={id} class="block text-[#4a2c0f] font-medium mb-1">{label}</label>
+  {type === 'select' ? (
+    <select id={id} class="w-full p-2 border border-[#4a2c0f] rounded bg-[#f5e6c7] text-[#4a2c0f]" multiple={multiple} required={required}>
+      {options.map((option: { value: string; label: string; selected?: boolean }) => (
+        <option value={option.value} selected={option.selected}>{option.label}</option>
+      ))}
+    </select>
+  ) : type === 'textarea' ? (
+    <textarea id={id} class="w-full p-2 border border-[#4a2c0f] rounded bg-[#f5e6c7] text-[#4a2c0f]" required={required}>{value}</textarea>
+  ) : type === 'checkbox' ? (
+    <input type="checkbox" id={id} checked={value} class="accent-[#4a2c0f]" />
+  ) : (
+    <input type={type} id={id} value={value} class="w-full p-2 border border-[#4a2c0f] rounded bg-[#f5e6c7] text-[#4a2c0f]" required={required} />
+  )}
+</div>
+
+<style>
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    transition: border-color 0.2s ease;
+  }
+
+  .form-group input:focus,
+  .form-group textarea:focus,
+  .form-group select:focus {
+    outline: none;
+    border-color: #7b4e1f;
+  }
+</style>

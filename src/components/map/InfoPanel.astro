@@ -1,0 +1,119 @@
+---
+interface Props {
+  feature?: any;
+  type?: string;
+  onClose?: () => void;
+}
+
+const { feature, type, onClose } = Astro.props;
+
+// Capitalize the type for display
+const typeDisplay = type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Feature';
+---
+
+<div class="info-panel" id="info-panel" style={feature ? 'display: block;' : 'display: none;'}>
+  <div class="info-header">
+    <h3 id="info-title">{typeDisplay}: {feature?.name || 'Unnamed'}</h3>
+    <button class="close-btn" id="close-info" onclick={onClose ? `(${onClose})()` : ''}>×</button>
+  </div>
+  <div class="info-content" id="info-content">
+    {feature && (
+      <div class="info-details">
+        <p><strong>Name:</strong> {feature.name || 'Unnamed'}</p>
+        <p><strong>Type:</strong> {typeDisplay}</p>
+        {feature.description && (
+          <p><strong>Description:</strong> {feature.description}</p>
+        )}
+        {feature.lat && feature.lng && (
+          <p><strong>Coordinates:</strong> {feature.lat.toFixed(6)}, {feature.lng.toFixed(6)}</p>
+        )}
+        {feature.city && (
+          <p><strong>City:</strong> {feature.city}</p>
+        )}
+        {feature.monument && (
+          <p><strong>Parent Monument:</strong> {feature.monument}</p>
+        )}
+        {feature.points && Array.isArray(feature.points) && (
+          <p><strong>Points:</strong> {feature.points.length}</p>
+        )}
+        <p><strong>Document ID:</strong> <code>{feature.id}</code></p>
+      </div>
+    )}
+  </div>
+</div>
+
+<style>
+  .info-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 500px;
+    max-height: 70vh;
+    overflow-y: auto;
+    z-index: 2000;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  }
+
+  .info-header {
+    background: #4a5568;
+    color: #ffffff;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px 8px 0 0;
+  }
+
+  .info-header h3 {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 600;
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease;
+  }
+
+  .close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .info-content {
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 0 0 8px 8px;
+  }
+
+  .info-details p {
+    margin-bottom: 0.8rem;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: #4a5568;
+  }
+
+  .info-details code {
+    background: #e2e8f0;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9rem;
+  }
+</style>

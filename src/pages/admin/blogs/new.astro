@@ -1,0 +1,1702 @@
+---
+import AdminLayout from '../../../components/layout/AdminLayout.astro';
+import { getFirestore, collection, getDocs, query, orderBy } from "firebase/firestore";
+import { app } from "../../../utils/firebase";
+
+export const prerender = false;
+
+// Initialize Firestore
+const db = getFirestore(app);
+
+// Fetch categories for the dropdown
+const categoriesQuery = query(collection(db, "categories"), orderBy("name"));
+const categoriesSnapshot = await getDocs(categoriesQuery);
+const categories = categoriesSnapshot.docs.map(doc => ({
+  id: doc.id,
+  name: doc.data().name
+}));
+---
+
+<AdminLayout title="Create New Blog Post" activePage="blog">
+  <div class="blog-create-container">
+    <div class="admin-header">
+      <div>
+        <h1>Create New Blog Post</h1>
+        <p class="header-subtitle">Create and publish a new blog post</p>
+      </div>
+      <div class="header-actions">
+        <a href="/admin/blogs" class="admin-button admin-button-secondary">
+          <span class="admin-button-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+          </span>
+          Back to Blogs
+        </a>
+      </div>
+    </div>
+    
+    <!-- Auto-save indicator -->
+    <div class="auto-save-indicator" id="auto-save-indicator">
+      <svg class="spinner" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" fill="none" stroke-width="3"/>
+      </svg>
+      <span id="save-status">Saving...</span>
+    </div>
+    
+    <form id="blog-form" class="blog-form">
+      <div class="form-main">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h2>Blog Content</h2>
+            <div class="editor-toolbar-actions">
+              <button type="button" class="editor-action-btn" id="toggle-fullscreen" title="Fullscreen">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="admin-card-body">
+            <div class="admin-form-group">
+              <label for="blog-title" class="admin-form-label">Title <span class="required">*</span></label>
+              <input type="text" id="blog-title" class="admin-form-input" required>
+              <div class="char-count" id="title-count">0 / 100</div>
+            </div>
+            
+            <div class="admin-form-group">
+              <label for="blog-slug" class="admin-form-label">Slug <span class="required">*</span></label>
+              <div class="input-with-button">
+                <input type="text" id="blog-slug" class="admin-form-input" required>
+                <button type="button" id="generate-slug" class="admin-button admin-button-sm">Generate</button>
+              </div>
+              <div class="form-helper">URL-friendly version of the title</div>
+            </div>
+            
+            <div class="admin-form-group">
+              <label for="blog-excerpt" class="admin-form-label">Excerpt <span class="required">*</span></label>
+              <textarea id="blog-excerpt" class="admin-form-textarea" rows="3" required></textarea>
+              <div class="char-count" id="excerpt-count">0 / 200</div>
+              <div class="form-helper">Short summary that appears in blog listings</div>
+            </div>
+            
+            <div class="admin-form-group">
+              <label class="admin-form-label">Hero Image</label>
+              <div class="image-upload-container" id="hero-image-container">
+                <div class="image-dropzone" id="hero-dropzone">
+                  <div class="image-preview" id="hero-image-preview">
+                    <div class="upload-placeholder">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                      </svg>
+                      <p>Drop image here or click to upload</p>
+                      <span class="upload-hint">JPG, PNG or WebP, max 5MB</span>
+                    </div>
+                  </div>
+                  <div class="upload-progress" id="hero-upload-progress">
+                    <div class="progress-bar"></div>
+                  </div>
+                </div>
+                <div class="upload-actions">
+                  <label for="hero-image-upload" class="admin-button admin-button-secondary admin-button-sm">
+                    <span class="admin-button-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                      </svg>
+                    </span>
+                    Upload Image
+                  </label>
+                  <input type="file" id="hero-image-upload" class="hidden-file-input" accept="image/*">
+                  <input type="hidden" id="hero-image-url">
+                  <button type="button" id="remove-hero-image" class="admin-button admin-button-danger admin-button-sm" style="display: none;">
+                    <span class="admin-button-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18"></path>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      </svg>
+                    </span>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="admin-form-group editor-group">
+              <label for="blog-content" class="admin-form-label">Content <span class="required">*</span></label>
+              <div class="editor-wrapper">
+                <div id="blog-editor-container" class="blog-editor-container"></div>
+                <textarea id="blog-content" class="hidden-textarea"></textarea>
+              </div>
+              <div class="editor-stats">
+                <span class="word-count">0 words</span>
+                <span class="char-count">0 characters</span>
+                <span class="read-time">0 min read</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Additional Images Section -->
+        <div class="admin-card additional-images-card">
+          <div class="admin-card-header">
+            <h3>Media Gallery</h3>
+            <p class="header-subtitle">Upload and manage images for your blog post</p>
+          </div>
+          <div class="admin-card-body">
+            <div class="gallery-dropzone" id="gallery-dropzone">
+              <div class="dropzone-content">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <p>Drop images here or click to upload</p>
+                <span class="upload-hint">Upload multiple images at once</span>
+              </div>
+              <input type="file" id="additional-image-upload" class="hidden-file-input" accept="image/*" multiple>
+            </div>
+            
+            <div class="image-gallery" id="image-gallery">
+              <!-- Gallery images will be added dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-sidebar">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>Publication Settings</h3>
+          </div>
+          <div class="admin-card-body">
+            <div class="admin-form-group">
+              <label for="blog-author" class="admin-form-label">Author <span class="required">*</span></label>
+              <input type="text" id="blog-author" class="admin-form-input" required>
+            </div>
+            
+            <div class="admin-form-group">
+              <label for="blog-category" class="admin-form-label">Category <span class="required">*</span></label>
+              <select id="blog-category" class="admin-form-select" required>
+                <option value="">Select a category</option>
+                {categories.map((category) => (
+                  <option value={category.id}>{category.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div class="admin-form-group">
+              <label for="blog-tags" class="admin-form-label">Tags</label>
+              <div class="tags-input-container">
+                <div class="tags-display" id="tags-display"></div>
+                <input type="text" id="blog-tags" class="admin-form-input" placeholder="Type and press Enter">
+              </div>
+              <div class="form-helper">Press Enter to add tags</div>
+            </div>
+            
+            <div class="admin-form-group checkbox-group">
+              <label class="checkbox-wrapper">
+                <input type="checkbox" id="blog-featured" class="admin-form-checkbox">
+                <span class="checkbox-label">Feature this post</span>
+              </label>
+            </div>
+            
+            <div class="admin-form-group">
+              <label for="blog-status" class="admin-form-label">Status</label>
+              <select id="blog-status" class="admin-form-select" required>
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h3>SEO Settings</h3>
+          </div>
+          <div class="admin-card-body">
+            <div class="admin-form-group">
+              <label for="seo-title" class="admin-form-label">SEO Title</label>
+              <input type="text" id="seo-title" class="admin-form-input">
+              <div class="char-count" id="seo-title-count">0 / 60</div>
+              <div class="form-helper">If left empty, the post title will be used</div>
+            </div>
+            
+            <div class="admin-form-group">
+              <label for="seo-description" class="admin-form-label">Meta Description</label>
+              <textarea id="seo-description" class="admin-form-textarea" rows="3"></textarea>
+              <div class="char-count" id="seo-desc-count">0 / 160</div>
+              <div class="form-helper">If left empty, the post excerpt will be used</div>
+            </div>
+            
+            <div class="admin-form-group">
+              <label for="seo-keywords" class="admin-form-label">Keywords</label>
+              <input type="text" id="seo-keywords" class="admin-form-input">
+              <div class="form-helper">Separate keywords with commas</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-actions">
+          <button type="button" id="save-draft-btn" class="admin-button admin-button-secondary">
+            <span class="admin-button-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+            </span>
+            Save Draft
+          </button>
+          <button type="submit" id="publish-btn" class="admin-button admin-button-primary">
+            <span class="admin-button-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"></path>
+                <path d="M12 6V12"></path>
+                <path d="M16 12L12 12"></path>
+              </svg>
+            </span>
+            Publish Post
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+  
+  <!-- Image URL Copy Notification -->
+  <div class="notification" id="url-notification">
+    <div class="notification-content">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      <span>Image URL copied to clipboard!</span>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  :root {
+    --primary-color: #c2634b;
+    --primary-dark: #ad5541;
+    --primary-light: #e08676;
+    --secondary-color: #3d5a80;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --text-color: #333333;
+    --text-light: #666666;
+    --border-color: #e1e1e1;
+    --background-color: #f5f5f5;
+    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --transition: all 0.3s ease;
+  }
+  
+  .blog-create-container {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  
+  .blog-form {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 2rem;
+    margin-top: 2rem;
+  }
+  
+  .form-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+  
+  .form-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .hidden-textarea, 
+  .hidden-file-input {
+    position: absolute;
+    left: -9999px;
+    opacity: 0;
+  }
+  
+  /* Admin Card Styles */
+  .admin-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    transition: var(--transition);
+  }
+  
+  .admin-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+  
+  .admin-card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: #f9f9f9;
+  }
+  
+  .admin-card-header h2,
+  .admin-card-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-color);
+  }
+  
+  .header-subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: var(--text-light);
+  }
+  
+  .admin-card-body {
+    padding: 1.5rem;
+  }
+  
+  /* Form Styles */
+  .admin-form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .admin-form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-color);
+  }
+  
+  .required {
+    color: var(--danger-color);
+  }
+  
+  .admin-form-input,
+  .admin-form-textarea,
+  .admin-form-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    transition: var(--transition);
+    background-color: white;
+  }
+  
+  .admin-form-input:focus,
+  .admin-form-textarea:focus,
+  .admin-form-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(194, 99, 75, 0.15);
+  }
+  
+  .admin-form-textarea {
+    min-height: 100px;
+    resize: vertical;
+  }
+  
+  .form-helper {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-light);
+  }
+  
+  .char-count {
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--text-light);
+    margin-top: 0.25rem;
+  }
+  
+  .input-with-button {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .input-with-button .admin-form-input {
+    flex: 1;
+  }
+  
+  /* Editor Styles */
+  .editor-wrapper {
+    position: relative;
+  }
+  
+  .blog-editor-container {
+    min-height: 500px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: white;
+    transition: var(--transition);
+  }
+  
+  .blog-editor-container:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(194, 99, 75, 0.15);
+  }
+  
+  .editor-toolbar-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .editor-action-btn {
+    padding: 0.5rem;
+    border: none;
+    background: none;
+    color: var(--text-light);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: var(--transition);
+  }
+  
+  .editor-action-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--text-color);
+  }
+  
+  .editor-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    color: var(--text-light);
+  }
+  
+  /* Image Upload Styles */
+  .image-upload-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .image-dropzone {
+    position: relative;
+    cursor: pointer;
+  }
+  
+  .image-preview {
+    width: 100%;
+    height: 250px;
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    transition: var(--transition);
+  }
+  
+  .image-dropzone.dragover .image-preview {
+    border-color: var(--primary-color);
+    background-color: rgba(194, 99, 75, 0.05);
+  }
+  
+  .image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    color: var(--text-light);
+  }
+  
+  .upload-placeholder svg {
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+  }
+  
+  .upload-placeholder p {
+    margin: 0 0 0.5rem;
+    font-weight: 500;
+    color: var(--text-color);
+  }
+  
+  .upload-hint {
+    font-size: 0.875rem;
+    color: var(--text-light);
+  }
+  
+  .upload-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background-color: rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .upload-progress.active {
+    opacity: 1;
+  }
+  
+  .progress-bar {
+    height: 100%;
+    background-color: var(--primary-color);
+    width: 0;
+    transition: width 0.3s ease;
+  }
+  
+  .upload-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  /* Gallery Styles */
+  .gallery-dropzone {
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-bottom: 1.5rem;
+  }
+  
+  .gallery-dropzone:hover {
+    border-color: var(--primary-color);
+    background-color: rgba(194, 99, 75, 0.05);
+  }
+  
+  .gallery-dropzone.dragover {
+    border-color: var(--primary-color);
+    background-color: rgba(194, 99, 75, 0.1);
+  }
+  
+  .dropzone-content {
+    color: var(--text-light);
+  }
+  
+  .dropzone-content svg {
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+  }
+  
+  .dropzone-content p {
+    margin: 0 0 0.5rem;
+    font-weight: 500;
+    color: var(--text-color);
+  }
+  
+  .image-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+  
+  .gallery-image {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: var(--transition);
+  }
+  
+  .gallery-image:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+  
+  .gallery-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .gallery-image-actions {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: var(--transition);
+  }
+  
+  .gallery-image:hover .gallery-image-actions {
+    opacity: 1;
+  }
+  
+  .gallery-action-btn {
+    background-color: white;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: var(--transition);
+  }
+  
+  .gallery-action-btn:hover {
+    transform: scale(1.1);
+  }
+  
+  .copy-url-btn:hover {
+    color: var(--primary-color);
+  }
+  
+  .delete-img-btn:hover {
+    color: var(--danger-color);
+  }
+  
+  /* Tags Input */
+  .tags-input-container {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.5rem;
+    min-height: 44px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  
+  .tags-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .tag-item {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 50px;
+    font-size: 0.875rem;
+  }
+  
+  .tag-remove {
+    margin-left: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+  }
+  
+  .tags-input-container .admin-form-input {
+    border: none;
+    padding: 0.25rem;
+    flex: 1;
+    min-width: 100px;
+  }
+  
+  .tags-input-container .admin-form-input:focus {
+    box-shadow: none;
+  }
+  
+  /* Checkbox Styles */
+  .checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  
+  .admin-form-checkbox {
+    width: 18px;
+    height: 18px;
+    margin-right: 0.75rem;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+  }
+  
+  .checkbox-label {
+    font-weight: normal;
+    color: var(--text-color);
+    cursor: pointer;
+  }
+  
+  /* Button Styles */
+  .admin-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.95rem;
+    text-decoration: none;
+  }
+  
+  .admin-button-primary {
+    background-color: var(--primary-color);
+    color: white;
+  }
+  
+  .admin-button-primary:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(194, 99, 75, 0.3);
+  }
+  
+  .admin-button-secondary {
+    background-color: #f0f0f0;
+    color: var(--text-color);
+  }
+  
+  .admin-button-secondary:hover {
+    background-color: #e0e0e0;
+  }
+  
+  .admin-button-danger {
+    background-color: var(--danger-color);
+    color: white;
+  }
+  
+  .admin-button-danger:hover {
+    background-color: #bd2130;
+  }
+  
+  .admin-button-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+  
+  .admin-button-icon {
+    display: flex;
+    align-items: center;
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    position: sticky;
+    bottom: 1rem;
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+  }
+  
+  /* Auto-save Indicator */
+  .auto-save-indicator {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    background: white;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: var(--transition);
+    z-index: 100;
+  }
+  
+  .auto-save-indicator.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  .spinner {
+    width: 16px;
+    height: 16px;
+    animation: spin 1s linear infinite;
+  }
+  
+  .spinner circle {
+    stroke: var(--primary-color);
+    stroke-linecap: round;
+    stroke-dasharray: 50;
+    stroke-dashoffset: 12.5;
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  /* Notification */
+  .notification {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    background: var(--success-color);
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: var(--transition);
+    z-index: 100;
+  }
+  
+  .notification.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 1200px) {
+    .blog-form {
+      grid-template-columns: 1fr;
+    }
+    
+    .form-sidebar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    
+    .form-actions {
+      position: static;
+      justify-content: flex-end;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .blog-create-container {
+      padding: 1rem;
+    }
+    
+    .admin-header {
+      flex-direction: column;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    
+    .form-sidebar {
+      grid-template-columns: 1fr;
+    }
+    
+    .image-gallery {
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+    
+    .form-actions {
+      flex-direction: column;
+    }
+    
+    .admin-button {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+
+<script>
+  import { getFirestore, collection, addDoc, serverTimestamp } from "firebase/firestore";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+  import { app } from "../../../utils/firebase";
+  import EditorJS from '@editorjs/editorjs';
+  import Header from '@editorjs/header';
+  import List from '@editorjs/list';
+  import ImageTool from '@editorjs/image';
+  import Quote from '@editorjs/quote';
+  import Embed from '@editorjs/embed';
+  import Code from '@editorjs/code';
+  import Table from '@editorjs/table';
+  import Checklist from '@editorjs/checklist';
+  import InlineCode from '@editorjs/inline-code';
+  import Marker from '@editorjs/marker';
+  
+  // Initialize Firestore and Storage
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+  
+  // Track uploaded images and form state
+  const uploadedImages: string[] = [];
+  let isFormDirty = false;
+  let autoSaveTimer: NodeJS.Timeout | null = null;
+  
+  document.addEventListener('DOMContentLoaded', async function() {
+    // Initialize Editor.js with enhanced configuration
+    const editor = new EditorJS({
+      holder: 'blog-editor-container',
+      placeholder: 'Start writing your blog post...',
+      tools: {
+        header: {
+          class: Header,
+          inlineToolbar: true,
+          config: {
+            placeholder: 'Enter a header',
+            levels: [2, 3, 4],
+            defaultLevel: 2
+          }
+        },
+        list: {
+          class: List,
+          inlineToolbar: true
+        },
+        checklist: {
+          class: Checklist,
+          inlineToolbar: true
+        },
+        quote: {
+          class: Quote,
+          inlineToolbar: true,
+          config: {
+            quotePlaceholder: 'Enter a quote',
+            captionPlaceholder: 'Quote\'s author'
+          }
+        },
+        code: {
+          class: Code,
+          config: {
+            placeholder: 'Enter code here'
+          }
+        },
+        table: {
+          class: Table,
+          inlineToolbar: true,
+          config: {
+            rows: 2,
+            cols: 3
+          }
+        },
+        marker: {
+          class: Marker,
+          shortcut: 'CMD+SHIFT+M'
+        },
+        inlineCode: {
+          class: InlineCode,
+          shortcut: 'CMD+SHIFT+C'
+        },
+        image: {
+          class: ImageTool,
+          config: {
+            uploader: {
+              uploadByFile: async (file: File) => {
+                try {
+                  const imageUrl = await uploadImage(file, 'content');
+                  return {
+                    success: 1,
+                    file: {
+                      url: imageUrl
+                    }
+                  };
+                } catch (error) {
+                  console.error("Error uploading image:", error);
+                  return {
+                    success: 0,
+                    file: {
+                      url: null
+                    }
+                  };
+                }
+              }
+            }
+          }
+        },
+        embed: {
+          class: Embed,
+          config: {
+            services: {
+              youtube: true,
+              twitter: true,
+              instagram: true,
+              codepen: {
+                regex: /https?:\/\/codepen.io\/([^\/\?\&]*)\/pen\/([^\/\?\&]*)/,
+                embedUrl: 'https://codepen.io/<%= remote_id %>?height=300&theme-id=0&default-tab=css,result&embed-version=2',
+                html: "<iframe height='300' scrolling='no' frameborder='no' allowtransparency='true' allowfullscreen='true' style='width: 100%;'></iframe>",
+                height: 300,
+                width: 600,
+                id: (groups: string[]) => groups.join('/embed/')
+              }
+            }
+          }
+        }
+      },
+      onChange: () => {
+        updateWordCount();
+        markFormDirty();
+      }
+    });
+    
+    // Character count tracking
+    const titleInput = document.getElementById('blog-title') as HTMLInputElement;
+    const titleCount = document.getElementById('title-count');
+    const excerptInput = document.getElementById('blog-excerpt') as HTMLTextAreaElement;
+    const excerptCount = document.getElementById('excerpt-count');
+    const seoTitleInput = document.getElementById('seo-title') as HTMLInputElement;
+    const seoTitleCount = document.getElementById('seo-title-count');
+    const seoDescInput = document.getElementById('seo-description') as HTMLTextAreaElement;
+    const seoDescCount = document.getElementById('seo-desc-count');
+    
+    // Update character counts
+    if (titleInput && titleCount) {
+      titleInput.addEventListener('input', () => {
+        titleCount.textContent = `${titleInput.value.length} / 100`;
+        markFormDirty();
+      });
+    }
+    
+    if (excerptInput && excerptCount) {
+      excerptInput.addEventListener('input', () => {
+        excerptCount.textContent = `${excerptInput.value.length} / 200`;
+        markFormDirty();
+      });
+    }
+    
+    if (seoTitleInput && seoTitleCount) {
+      seoTitleInput.addEventListener('input', () => {
+        seoTitleCount.textContent = `${seoTitleInput.value.length} / 60`;
+        markFormDirty();
+      });
+    }
+    
+    if (seoDescInput && seoDescCount) {
+      seoDescInput.addEventListener('input', () => {
+        seoDescCount.textContent = `${seoDescInput.value.length} / 160`;
+        markFormDirty();
+      });
+    }
+    
+    // Auto-generate slug with button
+    const slugInput = document.getElementById('blog-slug') as HTMLInputElement;
+    const generateSlugBtn = document.getElementById('generate-slug');
+    
+    if (titleInput && slugInput && generateSlugBtn) {
+      generateSlugBtn.addEventListener('click', () => {
+        slugInput.value = titleInput.value
+          .toLowerCase()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/^-+|-+$/g, '');
+      });
+      
+      // Auto-generate slug as user types title
+      titleInput.addEventListener('input', () => {
+        if (!slugInput.value || slugInput.value === titleInput.value.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-')) {
+          slugInput.value = titleInput.value
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/^-+|-+$/g, '');
+        }
+      });
+    }
+    
+    // Word count and read time calculator
+    const wordCountElement = document.querySelector('.word-count');
+    const charCountElement = document.querySelector('.char-count');
+    const readTimeElement = document.querySelector('.read-time');
+    
+    async function updateWordCount() {
+      try {
+        const data = await editor.save();
+        const text = data.blocks.map(block => {
+          if (block.type === 'paragraph' || block.type === 'header') {
+            return block.data.text;
+          } else if (block.type === 'list' || block.type === 'checklist') {
+            return block.data.items.join(' ');
+          } else if (block.type === 'quote') {
+            return block.data.text + ' ' + block.data.caption;
+          }
+          return '';
+        }).join(' ');
+        
+        const wordCount = text.trim().split(/\s+/).filter(word => word.length > 0).length;
+        const charCount = text.length;
+        const readTime = Math.ceil(wordCount / 200); // Assuming 200 words per minute
+        
+        if (wordCountElement) {
+          wordCountElement.textContent = `${wordCount} words`;
+        }
+        
+        if (charCountElement) {
+          charCountElement.textContent = `${charCount} characters`;
+        }
+        
+        if (readTimeElement) {
+          readTimeElement.textContent = `${readTime} min read`;
+        }
+        
+        return wordCount;
+      } catch (error) {
+        console.error("Error calculating word count:", error);
+        return 0;
+      }
+    }
+    
+    // Enhanced drag and drop for hero image
+    const heroDropzone = document.getElementById('hero-dropzone');
+    const heroImageUpload = document.getElementById('hero-image-upload') as HTMLInputElement;
+    const heroImagePreview = document.getElementById('hero-image-preview');
+    const heroImageUrl = document.getElementById('hero-image-url') as HTMLInputElement;
+    const removeHeroImageBtn = document.getElementById('remove-hero-image');
+    const heroUploadProgress = document.getElementById('hero-upload-progress');
+    
+    // Setup drag and drop
+    if (heroDropzone) {
+      heroDropzone.addEventListener('click', () => {
+        heroImageUpload?.click();
+      });
+      
+      heroDropzone.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        heroDropzone.classList.add('dragover');
+      });
+      
+      heroDropzone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        heroDropzone.classList.remove('dragover');
+      });
+      
+      heroDropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+      });
+      
+      heroDropzone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        heroDropzone.classList.remove('dragover');
+        
+        const files = e.dataTransfer?.files;
+        if (files && files[0]) {
+          await handleHeroImageUpload(files[0]);
+        }
+      });
+    }
+    
+    // Hero image upload handling
+    if (heroImageUpload) {
+      heroImageUpload.addEventListener('change', async (e) => {
+        const target = e.target as HTMLInputElement;
+        const file = target.files?.[0];
+        if (file) {
+          await handleHeroImageUpload(file);
+        }
+      });
+    }
+    
+    async function handleHeroImageUpload(file: File) {
+      if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file');
+        return;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size should be less than 5MB');
+        return;
+      }
+      
+      try {
+        // Show progress
+        if (heroUploadProgress) {
+          heroUploadProgress.classList.add('active');
+          const progressBar = heroUploadProgress.querySelector('.progress-bar') as HTMLDivElement;
+          if (progressBar) {
+            progressBar.style.width = '0%';
+          }
+        }
+        
+        // Simulate progress (in real implementation, use Firebase upload progress)
+        const progressInterval = setInterval(() => {
+          const progressBar = heroUploadProgress?.querySelector('.progress-bar') as HTMLDivElement;
+          if (progressBar) {
+            const current = parseInt(progressBar.style.width) || 0;
+            progressBar.style.width = Math.min(current + 10, 90) + '%';
+          }
+        }, 100);
+        
+        const imageUrl = await uploadImage(file, 'hero');
+        
+        clearInterval(progressInterval);
+        
+        // Complete progress
+        const progressBar = heroUploadProgress?.querySelector('.progress-bar') as HTMLDivElement;
+        if (progressBar) {
+          progressBar.style.width = '100%';
+        }
+        
+        setTimeout(() => {
+          // Update preview
+          if (heroImagePreview) {
+            heroImagePreview.innerHTML = `<img src="${imageUrl}" alt="Hero image">`;
+          }
+          if (heroImageUrl) {
+            heroImageUrl.value = imageUrl;
+          }
+          if (removeHeroImageBtn) {
+            removeHeroImageBtn.style.display = 'inline-flex';
+          }
+          
+          // Hide progress
+          if (heroUploadProgress) {
+            heroUploadProgress.classList.remove('active');
+          }
+          
+          markFormDirty();
+        }, 500);
+        
+      } catch (error) {
+        console.error("Error uploading hero image:", error);
+        alert("Error uploading image. Please try again.");
+        
+        // Hide progress
+        if (heroUploadProgress) {
+          heroUploadProgress.classList.remove('active');
+        }
+      }
+    }
+    
+    if (removeHeroImageBtn) {
+      removeHeroImageBtn.addEventListener('click', () => {
+        if (heroImagePreview) {
+          heroImagePreview.innerHTML = `
+            <div class="upload-placeholder">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+              </svg>
+              <p>Drop image here or click to upload</p>
+              <span class="upload-hint">JPG, PNG or WebP, max 5MB</span>
+            </div>
+          `;
+        }
+        if (heroImageUrl) {
+          heroImageUrl.value = '';
+        }
+        if (removeHeroImageBtn) {
+          removeHeroImageBtn.style.display = 'none';
+        }
+        markFormDirty();
+      });
+    }
+    
+    // Enhanced gallery with drag and drop
+    const galleryDropzone = document.getElementById('gallery-dropzone');
+    const additionalImageUpload = document.getElementById('additional-image-upload') as HTMLInputElement;
+    const imageGallery = document.getElementById('image-gallery');
+    
+    if (galleryDropzone && additionalImageUpload) {
+      galleryDropzone.addEventListener('click', () => {
+        additionalImageUpload.click();
+      });
+      
+      galleryDropzone.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        galleryDropzone.classList.add('dragover');
+      });
+      
+      galleryDropzone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        galleryDropzone.classList.remove('dragover');
+      });
+      
+      galleryDropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+      });
+      
+      galleryDropzone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        galleryDropzone.classList.remove('dragover');
+        
+        const files = e.dataTransfer?.files;
+        if (files) {
+          for (let i = 0; i < files.length; i++) {
+            if (files[i].type.startsWith('image/')) {
+              await handleGalleryImageUpload(files[i]);
+            }
+          }
+        }
+      });
+    }
+    
+    if (additionalImageUpload) {
+      additionalImageUpload.addEventListener('change', async (e) => {
+        const target = e.target as HTMLInputElement;
+        const files = target.files;
+        if (files) {
+          for (let i = 0; i < files.length; i++) {
+            await handleGalleryImageUpload(files[i]);
+          }
+        }
+      });
+    }
+    
+    async function handleGalleryImageUpload(file: File) {
+      if (!file.type.startsWith('image/')) {
+        return;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`${file.name} is too large. Max size is 5MB`);
+        return;
+      }
+      
+      try {
+        const imageUrl = await uploadImage(file, 'gallery');
+        addImageToGallery(imageUrl);
+        markFormDirty();
+      } catch (error) {
+        console.error("Error uploading gallery image:", error);
+        alert(`Error uploading ${file.name}. Please try again.`);
+      }
+    }
+    
+    function addImageToGallery(imageUrl: string) {
+      const galleryImage = document.createElement('div');
+      galleryImage.className = 'gallery-image';
+      galleryImage.innerHTML = `
+        <img src="${imageUrl}" alt="Gallery image">
+        <div class="gallery-image-actions">
+          <button type="button" class="gallery-action-btn copy-url-btn" data-url="${imageUrl}" title="Copy URL">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+          <button type="button" class="gallery-action-btn delete-img-btn" data-url="${imageUrl}" title="Delete">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      `;
+      
+      if (imageGallery) {
+        imageGallery.appendChild(galleryImage);
+      }
+      
+      // Add event listeners to buttons
+      const copyButton = galleryImage.querySelector('.copy-url-btn');
+      if (copyButton) {
+        copyButton.addEventListener('click', () => {
+          navigator.clipboard.writeText(imageUrl).then(() => {
+            showNotification('Image URL copied to clipboard!');
+          });
+        });
+      }
+      
+      const deleteButton = galleryImage.querySelector('.delete-img-btn');
+      if (deleteButton) {
+        deleteButton.addEventListener('click', () => {
+          if (confirm('Are you sure you want to delete this image?')) {
+            // Remove from DOM
+            if (imageGallery) {
+              imageGallery.removeChild(galleryImage);
+            }
+            
+            // Remove from uploaded images list
+            const index = uploadedImages.indexOf(imageUrl);
+            if (index > -1) {
+              uploadedImages.splice(index, 1);
+            }
+            
+            markFormDirty();
+          }
+        });
+      }
+      
+      // Add to uploaded images list
+      uploadedImages.push(imageUrl);
+    }
+    
+    // Tags input functionality
+    const tagsInput = document.getElementById('blog-tags') as HTMLInputElement;
+    const tagsDisplay = document.getElementById('tags-display');
+    const tags: string[] = [];
+    
+    if (tagsInput && tagsDisplay) {
+      tagsInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const tag = tagsInput.value.trim();
+          if (tag && !tags.includes(tag)) {
+            tags.push(tag);
+            renderTags();
+            tagsInput.value = '';
+            markFormDirty();
+          }
+        }
+      });
+      
+      function renderTags() {
+        if (!tagsDisplay) return;
+        
+        tagsDisplay.innerHTML = tags.map(tag => `
+          <span class="tag-item">
+            ${tag}
+            <span class="tag-remove" data-tag="${tag}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </span>
+          </span>
+        `).join('');
+        
+        // Add remove event listeners
+        tagsDisplay.querySelectorAll('.tag-remove').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const tag = (e.currentTarget as HTMLElement).getAttribute('data-tag');
+            if (tag) {
+              const index = tags.indexOf(tag);
+              if (index > -1) {
+                tags.splice(index, 1);
+                renderTags();
+                markFormDirty();
+              }
+            }
+          });
+        });
+      }
+    }
+    
+    // Fullscreen editor toggle
+    const toggleFullscreenBtn = document.getElementById('toggle-fullscreen');
+    const editorGroup = document.querySelector('.editor-group');
+    
+    if (toggleFullscreenBtn && editorGroup) {
+      toggleFullscreenBtn.addEventListener('click', () => {
+        editorGroup.classList.toggle('fullscreen');
+        document.body.classList.toggle('editor-fullscreen');
+      });
+    }
+    
+    // Auto-save functionality
+    function markFormDirty() {
+      isFormDirty = true;
+      
+      // Clear existing timer
+      if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer);
+      }
+      
+      // Set new timer for auto-save
+      autoSaveTimer = setTimeout(() => {
+        if (isFormDirty) {
+          showAutoSaveIndicator();
+          // Simulate auto-save
+          setTimeout(() => {
+            hideAutoSaveIndicator();
+            isFormDirty = false;
+          }, 2000);
+        }
+      }, 3000); // Auto-save after 3 seconds of inactivity
+    }
+    
+    function showAutoSaveIndicator() {
+      const indicator = document.getElementById('auto-save-indicator');
+      const statusText = document.getElementById('save-status');
+      if (indicator && statusText) {
+        indicator.classList.add('active');
+        statusText.textContent = 'Saving...';
+      }
+    }
+    
+    function hideAutoSaveIndicator() {
+      const indicator = document.getElementById('auto-save-indicator');
+      const statusText = document.getElementById('save-status');
+      if (indicator && statusText) {
+        statusText.textContent = 'Saved';
+        setTimeout(() => {
+          indicator.classList.remove('active');
+        }, 1000);
+      }
+    }
+    
+    // Notification system
+    function showNotification(message: string) {
+      const notification = document.getElementById('url-notification');
+      if (notification) {
+        const contentElement = notification.querySelector('.notification-content span');
+        if (contentElement) {
+          contentElement.textContent = message;
+        }
+        notification.classList.add('show');
+        setTimeout(() => {
+          notification.classList.remove('show');
+        }, 3000);
+      }
+    }
+    
+    // Helper function to upload image to Firebase Storage
+    async function uploadImage(file: File, folder: string): Promise<string> {
+      const timestamp = Date.now();
+      const fileName = `${timestamp}_${file.name.replace(/\s+/g, '_')}`;
+      const storageRef = ref(storage, `blogs/${folder}/${fileName}`);
+      
+      await uploadBytes(storageRef, file);
+      return await getDownloadURL(storageRef);
+    }
+    
+    // Form submission handling
+    const blogForm = document.getElementById('blog-form');
+    const saveDraftBtn = document.getElementById('save-draft-btn');
+    const publishBtn = document.getElementById('publish-btn');
+    
+    // Handle Save Draft button
+    if (saveDraftBtn) {
+      saveDraftBtn.addEventListener('click', async () => {
+        // Set status to draft and submit form
+        const statusSelect = document.getElementById('blog-status') as HTMLSelectElement;
+        if (statusSelect) {
+          statusSelect.value = 'draft';
+        }
+        await savePost();
+      });
+    }
+    
+    // Handle form submission
+    if (blogForm) {
+      blogForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await savePost();
+      });
+    }
+    
+    // Save post function
+    async function savePost() {
+      try {
+        // Validate form
+        const title = (document.getElementById('blog-title') as HTMLInputElement)?.value;
+        const slug = (document.getElementById('blog-slug') as HTMLInputElement)?.value;
+        const excerpt = (document.getElementById('blog-excerpt') as HTMLTextAreaElement)?.value;
+        const heroImageUrl = (document.getElementById('hero-image-url') as HTMLInputElement)?.value;
+        const author = (document.getElementById('blog-author') as HTMLInputElement)?.value;
+        const category = (document.getElementById('blog-category') as HTMLSelectElement)?.value;
+        const status = (document.getElementById('blog-status') as HTMLSelectElement)?.value;
+        
+        // Form validation
+        const errors: string[] = [];
+        if (!title?.trim()) errors.push('Title is required');
+        if (!slug?.trim()) errors.push('Slug is required');
+        if (!excerpt?.trim()) errors.push('Excerpt is required');
+        if (!author?.trim()) errors.push('Author is required');
+        if (!category) errors.push('Category is required');
+        
+        if (errors.length > 0) {
+          alert('Please fix the following errors:\n\n' + errors.join('\n'));
+          return;
+        }
+        
+        // Get content from Editor.js
+        const editorData = await editor.save();
+        
+        // Validate content
+        if (editorData.blocks.length === 0) {
+          alert('Please add some content to your blog post');
+          return;
+        }
+        
+        const content = document.getElementById('blog-content') as HTMLTextAreaElement;
+        if (content) {
+          content.value = JSON.stringify(editorData);
+        }
+        
+        // Calculate word count
+        const wordCount = await updateWordCount();
+        
+        // Prepare SEO data
+        const seoTitle = (document.getElementById('seo-title') as HTMLInputElement)?.value || title;
+        const seoDescription = (document.getElementById('seo-description') as HTMLTextAreaElement)?.value || excerpt;
+        const seoKeywords = (document.getElementById('seo-keywords') as HTMLInputElement)?.value;
+        const seoKeywordsArray = seoKeywords.split(',').map((keyword: string) => keyword.trim()).filter((keyword: string) => keyword);
+        
+        // Featured status
+        const featured = (document.getElementById('blog-featured') as HTMLInputElement)?.checked;
+        
+        // Show loading state
+        if (status === 'published') {
+          (publishBtn as HTMLButtonElement)!.disabled = true;
+          publishBtn!.innerHTML = '<span class="spinner"></span> Publishing...';
+        } else {
+          (saveDraftBtn as HTMLButtonElement)!.disabled = true;
+          saveDraftBtn!.innerHTML = '<span class="spinner"></span> Saving...';
+        }
+        
+        // Prepare blog data
+        const blogData = {
+          title,
+          slug,
+          excerpt,
+          content: content?.value,
+          heroImage: heroImageUrl || null,
+          additionalImages: uploadedImages,
+          author,
+          category,
+          tags,
+          status,
+          featured,
+          wordCount,
+          readTime: Math.ceil(wordCount / 200),
+          seo: {
+            title: seoTitle,
+            description: seoDescription,
+            keywords: seoKeywordsArray
+          },
+          publishDate: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+        
+        // Save to Firestore
+        await addDoc(collection(db, "blogs"), blogData);
+        
+        // Show success and redirect
+        showNotification(status === 'published' ? 'Blog post published successfully!' : 'Blog post saved as draft!');
+        
+        setTimeout(() => {
+          window.location.href = '/admin/blogs';
+        }, 1500);
+        
+      } catch (error) {
+        console.error("Error saving blog post:", error);
+        alert("Error saving blog post. Please try again.");
+        
+        // Reset button states
+        if (publishBtn) {
+          (publishBtn as HTMLButtonElement).disabled = false;
+          publishBtn.innerHTML = '<span class="admin-button-icon">...</span> Publish Post';
+        }
+        if (saveDraftBtn) {
+          (saveDraftBtn as HTMLButtonElement).disabled = false;
+          saveDraftBtn.innerHTML = '<span class="admin-button-icon">...</span> Save Draft';
+        }
+      }
+    }
+    
+    // Warn before leaving with unsaved changes
+    window.addEventListener('beforeunload', (e) => {
+      if (isFormDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+  });
+</script>

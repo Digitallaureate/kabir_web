@@ -1,0 +1,71 @@
+---
+interface Option {
+  value: string;
+  label: string;
+}
+
+interface Props {
+  id?: string;
+  options: Option[];
+  value?: string;
+  disabled?: boolean;
+  required?: boolean;
+  class?: string;
+}
+
+const { 
+  id, 
+  options = [], 
+  value = '', 
+  disabled = false, 
+  required = false,
+  class: className = ''
+} = Astro.props;
+---
+
+<select 
+  id={id}
+  disabled={disabled}
+  required={required}
+  class:list={[
+    'select',
+    className
+  ]}
+>
+  {options.map((option) => (
+    <option value={option.value} selected={option.value === value}>
+      {option.label}
+    </option>
+  ))}
+</select>
+
+<style>
+  .select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #4a2c0f;
+    border-radius: 4px;
+    background-color: #f5e6c7;
+    color: #4a2c0f;
+    font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+  }
+
+  .select:focus {
+    outline: none;
+    border-color: #7b4e1f;
+    box-shadow: 0 0 0 2px rgba(123, 78, 31, 0.2);
+  }
+
+  .select:disabled {
+    background-color: #e6e6e6;
+    color: #999;
+    cursor: not-allowed;
+  }
+
+  .select option {
+    background-color: #f5e6c7;
+    color: #4a2c0f;
+  }
+</style>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firebase Login Test</title>
+  <link rel="icon" href="data:;base64,iVBORw0KGgo="> <!-- Empty favicon to suppress 404 -->
+</head>
+<body>
+  <h1>Firebase Login Test</h1>
+  <p>Check the browser console for login results.</p>
+
+  <script type="module">
+    // Import Firebase SDK modules
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+
+    // Firebase client-side configuration
+    const firebaseConfig = {
+      apiKey: 'AIzaSyD3k3FLgH9nFHG8xFuRJDnesjVmkRkzPQU',
+      authDomain: 'ecostory-site.firebaseapp.com',
+      projectId: 'ecostory-site',
+      storageBucket: 'ecostory-site.firebasestorage.app',
+      messagingSenderId: '36036911566',
+      appId: '1:36036911566:web:a1983a531840cb85d6cb9f'
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // Test login function
+    async function testLogin() {
+      const email = 'sohamnsharma@gmail.com';
+      const password = 'rdcv4c75';
+      
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        console.log('Login successful! User details:');
+        console.log(`UID: ${user.uid}`);
+        console.log(`Email: ${user.email}`);
+        console.log(`Display Name: ${user.displayName || 'None'}`);
+        console.log(`Email Verified: ${user.emailVerified}`);
+        return { success: true, user };
+      } catch (error) {
+        console.error('Login failed:', error.message);
+        return { success: false, error: error.message };
+      }
+    }
+
+    // Execute the test
+    testLogin().then(result => {
+      console.log('Test result:', result);
+    });
+  </script>
+</body>
+</html>

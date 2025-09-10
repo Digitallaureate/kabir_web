@@ -1,0 +1,743 @@
+---
+import Layout from '../components/layout/Layout.astro';
+import Section from '../components/ui/Section.astro';
+import Button from '../components/ui/Button.astro';
+import { getFirestore, collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { app } from "../utils/firebase";
+
+export const prerender = false;
+
+// Initialize Firestore
+const db = getFirestore(app);
+
+// Check if user is logged in (server-side check)
+const auth = getAuth(app);
+let isLoggedIn = false;
+
+// For server-side rendering, we'll fetch all data and filter on the client side
+// Fetch cities from Firestore
+const citiesSnapshot = await getDocs(query(collection(db, "cities"), where("is_active", "==", true), orderBy("name")));
+const cities = [];
+citiesSnapshot.forEach((doc) => {
+  cities.push({
+    id: doc.id,
+    name: doc.data().name || 'Unknown City',
+    description: doc.data().description || '',
+    location: doc.data().location || '',
+    latitude: parseFloat(doc.data().latitude) || 0,
+    longitude: parseFloat(doc.data().longitude) || 0,
+    zoomLevel: parseInt(doc.data().zoom_level) || 10,
+    period: doc.data().period || ''
+  });
+});
+
+// Fetch monuments from Firestore
+const monumentsSnapshot = await getDocs(query(collection(db, "monuments"), orderBy("name")));
+const monuments = [];
+monumentsSnapshot.forEach((doc) => {
+  monuments.push({
+    id: doc.id,
+    name: doc.data().name || 'Unknown Monument',
+    description: doc.data().description || '',
+    category: doc.data().category || 'Unknown',
+    period: doc.data().period || '',
+    yearBuilt: doc.data().year_built || '',
+    architect: doc.data().architect || '',
+    latitude: parseFloat(doc.data().latitude) || 0,
+    longitude: parseFloat(doc.data().longitude) || 0,
+    cityId: doc.data().city_id || '',
+    address: doc.data().address || '',
+    isActive: doc.data().is_active || false,
+    imageUrl: doc.data().image_url || '/assets/images/monument-placeholder.jpg'
+  });
+});
+
+// Fetch sub-monuments from Firestore
+const subMonumentsSnapshot = await getDocs(query(collection(db, "sub_monuments"), orderBy("name")));
+const subMonuments = [];
+subMonumentsSnapshot.forEach((doc) => {
+  subMonuments.push({
+    id: doc.id,
+    parentId: doc.data().parent_id || '',
+    name: doc.data().name || 'Unknown Point of Interest',
+    title: doc.data().title || '',
+    description: doc.data().description || '',
+    content: doc.data().content || '',
+    category: doc.data().category || 'Unknown',
+    latitude: parseFloat(doc.data().latitude) || 0,
+    longitude: parseFloat(doc.data().longitude) || 0,
+    isActive: doc.data().is_active || false,
+    imageUrl: doc.data().image_url || '/assets/images/submonument-placeholder.jpg',
+    tags: doc.data().tags || []
+  });
+});
+
+// Fetch routes from Firestore
+const routesSnapshot = await getDocs(query(collection(db, "routes"), orderBy("name")));
+const routes = [];
+routesSnapshot.forEach((doc) => {
+  routes.push({
+    id: doc.id,
+    name: doc.data().name || 'Unnamed Route',
+    description: doc.data().description || '',
+    monumentIds: doc.data().monument_ids || [],
+    order: doc.data().order || [],
+    type: doc.data().type || 'custom',
+    estimatedTime: doc.data().estimated_time || '',
+    distance: doc.data().distance || '',
+    isActive: doc.data().is_active || false,
+    color: doc.data().color || '#c2634b'
+  });
+});
+
+// Default to Agra center
+const defaultCenter = { lat: 27.1767, lng: 78.0081 };
+---
+
+<Layout title="Explore History" description="Explore Agra's rich cultural and historical heritage through our interactive map.">
+  <div id="auth-check" data-is-logged-in={isLoggedIn.toString()}></div>
+  
+  <div id="login-required-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Login Required</h2>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Please log in to access the interactive map and explore Agra's historical monuments.</p>
+        <div class="action-buttons">
+          <a href="/login?redirect=/map" class="login-btn">Login</a>
+          <a href="/signup?redirect=/map" class="signup-btn">Sign Up</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="explore-map-container">
+    <div class="map-sidebar">
+      <div class="sidebar-header">
+        <h2>Explore History</h2>
+      </div>
+      
+      <div class="sidebar-section">
+        <h3>Zoom Levels</h3>
+        <div class="zoom-buttons">
+          <button id="city-zoom" class="zoom-btn active">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            Cities
+          </button>
+          <button id="monument-zoom" class="zoom-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            Monuments
+          </button>
+          <button id="detail-zoom" class="zoom-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            Details
+          </button>
+        </div>
+      </div>
+      
+      <div class="sidebar-section">
+        <div class="section-header">
+          <h3>Cities</h3>
+          <div class="toggle-section">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+        </div>
+        <div class="section-content">
+          <div class="city-list">
+            {cities.map((city) => (
+              <div class="city-item" data-city-id={city.id}>
+                <div class="city-info">
+                  <h4 class="city-name">{city.name}</h4>
+                  <p class="city-period">{city.period}</p>
+                </div>
+                <button class="locate-btn" data-lat={city.latitude} data-lng={city.longitude} data-zoom={city.zoomLevel} title="Locate on map">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      
+      <div class="sidebar-section">
+        <div class="section-header">
+          <h3>Monuments</h3>
+          <div class="filter-container">
+            <select id="monument-filter" class="filter-dropdown">
+              <option value="all">All Categories</option>
+              <option value="Mausoleum">Mausoleum</option>
+              <option value="Fort">Fort</option>
+              <option value="Palace">Palace</option>
+              <option value="Garden">Garden</option>
+              <option value="Mosque">Mosque</option>
+              <option value="Tomb">Tomb</option>
+            </select>
+          </div>
+        </div>
+        <div class="section-content">
+          <div class="monument-list">
+            {monuments.map((monument) => (
+              <div class="monument-item" data-monument-id={monument.id} data-category={monument.category}>
+                <div class="monument-info">
+                  <h4 class="monument-name">{monument.name}</h4>
+                  <p class="monument-category">{monument.category}</p>
+                </div>
+                <button class="locate-btn" data-lat={monument.latitude} data-lng={monument.longitude} data-zoom={15} title="Locate on map">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      
+      <div class="sidebar-section">
+        <div class="section-header">
+          <h3>Recommended Routes</h3>
+        </div>
+        <div class="section-content">
+          <div class="route-list">
+            {routes.filter(route => route.isActive).map((route) => (
+              <div class="route-item" data-route-id={route.id}>
+                <div class="route-info">
+                  <h4 class="route-name">{route.name}</h4>
+                  <p class="route-details">
+                    <span class="route-monuments">{route.monumentIds.length} monuments</span>
+                    {route.estimatedTime && <span class="route-time">· {route.estimatedTime}</span>}
+                  </p>
+                </div>
+                <button class="show-route-btn" data-route-id={route.id} title="Show route" style={`color: ${route.color}`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="map" class="map-container"></div>
+    
+    <div id="monument-info-panel" class="monument-info-panel">
+      <button class="close-panel-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      <div class="panel-content"></div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .explore-map-container {
+    display: flex;
+    height: calc(100vh - 80px);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .map-sidebar {
+    width: 320px;
+    background-color: white;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  
+  .sidebar-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .sidebar-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--text-color);
+  }
+  
+  .sidebar-section {
+    padding: 1.5rem;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  
+  .section-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-color);
+  }
+  
+  .toggle-section {
+    cursor: pointer;
+    color: var(--text-light);
+    transition: transform 0.3s ease;
+  }
+  
+  .toggle-section.collapsed {
+    transform: rotate(-90deg);
+  }
+  
+  .section-content {
+    transition: height 0.3s ease, opacity 0.3s ease;
+    overflow: hidden;
+  }
+  
+  .section-content.collapsed {
+    height: 0;
+    opacity: 0;
+  }
+  
+  .zoom-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .zoom-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background-color: white;
+    color: var(--text-color);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .zoom-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+  
+  .zoom-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+  }
+  
+  .filter-dropdown {
+    padding: 0.5rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: var(--text-color);
+  }
+  
+  .city-list, .monument-list, .route-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .city-item, .monument-item, .route-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 6px;
+    background-color: #f9f9f9;
+    transition: background-color 0.3s ease;
+    cursor: pointer;
+  }
+  
+  .city-item:hover, .monument-item:hover, .route-item:hover {
+    background-color: #f0f0f0;
+  }
+  
+  .city-info, .monument-info, .route-info {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .city-name, .monument-name, .route-name {
+    margin: 0 0 0.25rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .city-period, .monument-category, .route-details {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-light);
+  }
+  
+  .locate-btn, .show-route-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+  }
+  
+  .locate-btn:hover, .show-route-btn:hover {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+  }
+  
+  .map-container {
+    flex: 1;
+    height: 100%;
+    background-color: #f0f0f0; /* Placeholder until Google Maps loads */
+  }
+  
+  .monument-info-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 350px;
+    height: 100%;
+    background-color: white;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 20;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    overflow-y: auto;
+  }
+  
+  .monument-info-panel.active {
+    transform: translateX(0);
+  }
+  
+  .close-panel-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 1;
+  }
+  
+  .close-panel-btn:hover {
+    background-color: #f0f0f0;
+    color: var(--text-color);
+  }
+  
+  .panel-content {
+    padding: 2rem;
+  }
+  
+  /* Modal Styles */
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 30;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .modal.active {
+    display: flex;
+  }
+  
+  .modal-content {
+    background-color: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  }
+  
+  .modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+  
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-light);
+  }
+  
+  .modal-body {
+    padding: 2rem;
+    text-align: center;
+  }
+  
+  .modal-body p {
+    margin-bottom: 2rem;
+    font-size: 1.1rem;
+  }
+  
+  .action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+  }
+  
+  .login-btn, .signup-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .login-btn {
+    background-color: white;
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+  }
+  
+  .login-btn:hover {
+    background-color: #f9f9f9;
+  }
+  
+  .signup-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: 1px solid var(--primary-color);
+  }
+  
+  .signup-btn:hover {
+    background-color: var(--primary-dark);
+  }
+  
+  @media (max-width: 992px) {
+    .map-sidebar {
+      width: 280px;
+    }
+    
+    .monument-info-panel {
+      width: 320px;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .explore-map-container {
+      flex-direction: column;
+      height: calc(100vh - 70px);
+    }
+    
+    .map-sidebar {
+      width: 100%;
+      height: 200px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      flex-direction: row;
+    }
+    
+    .sidebar-header {
+      display: none;
+    }
+    
+    .sidebar-section {
+      min-width: 260px;
+      padding: 1rem;
+      border-bottom: none;
+      border-right: 1px solid #f0f0f0;
+    }
+    
+    .map-container {
+      height: calc(100% - 200px);
+    }
+    
+    .monument-info-panel {
+      width: 100%;
+      height: 50%;
+      top: auto;
+      bottom: 0;
+      transform: translateY(100%);
+    }
+    
+    .monument-info-panel.active {
+      transform: translateY(0);
+    }
+    
+    .city-list, .monument-list, .route-list {
+      max-height: 150px;
+    }
+  }
+</style>
+
+<script>
+  // Helper functions
+  function getCityById(id) {
+    return allCities.find(city => city.id === id);
+  }
+  
+  function getMonumentById(id) {
+    return allMonuments.find(monument => monument.id === id);
+  }
+  
+  function getRouteById(id) {
+    return allRoutes.find(route => route.id === id);
+  }
+  
+  function getSubMonumentsByParentId(parentId) {
+    return allSubMonuments.filter(subMonument => subMonument.parentId === parentId);
+  }
+  
+  // This script will handle the map functionality using Google Maps API
+  document.addEventListener('DOMContentLoaded', function() {
+    // Check authentication state
+    const authCheck = document.getElementById('auth-check');
+    let isLoggedIn = authCheck ? authCheck.dataset.isLoggedIn === 'true' : false;
+    
+    // Perform client-side auth check (for SPA navigation)
+    const auth = firebase.auth();
+    
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        isLoggedIn = true;
+        initializeMap();
+      } else {
+        isLoggedIn = false;
+        showLoginModal();
+      }
+    });
+    
+    // Parse data from server
+    const allCities = JSON.parse(`${JSON.stringify(cities)}`);
+    const allMonuments = JSON.parse(`${JSON.stringify(monuments)}`);
+    const allSubMonuments = JSON.parse(`${JSON.stringify(subMonuments)}`);
+    const allRoutes = JSON.parse(`${JSON.stringify(routes)}`);
+    const defaultMapCenter = JSON.parse(`${JSON.stringify(defaultCenter)}`);
+    
+    // Initialize UI elements
+    initUI();
+    
+    // Login modal
+    const loginModal = document.getElementById('login-required-modal');
+    const modalClose = document.querySelector('.modal-close');
+    
+    function showLoginModal() {
+      if (loginModal) {
+        loginModal.classList.add('active');
+      }
+    }
+    
+    if (modalClose) {
+      modalClose.addEventListener('click', () => {
+        loginModal.classList.remove('active');
+      });
+    }
+    
+    let map;
+    let markers = {};
+    let polylines = [];
+    let activeInfoWindow = null;
+    let currentZoomLevel = 'city'; // 'city', 'monument', or 'detail'
+    
+    function initializeMap() {
+      const mapOptions = {
+        center: defaultMapCenter,
+        zoom: 10,
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true,
+        zoomControl: true,
+        styles: [
+          {
+            "elementType": "geometry",
+            "stylers": [
+              {
+                "color": "#ebe3cd"
+              }
+            ]
+          },
+          {
+            "elementType": "labels.text.fill",
+            "stylers": [
+              {
+                "color": "#523735"
+              }
+            ]
+          },
+          {
+            "elementType": "labels.text.stroke",
+            "stylers": [
+              {
+                "color": "#f5f1e6"
+              }
+            ]
+          },
+          {
+            "featureType": "administrative",
+            "elementType": "geometry.stroke",
+            "stylers": [
+              {
+                "color": "#c9b2a6"
+              }
+            ]
+          },
+          {
+            "featureType": "administrative

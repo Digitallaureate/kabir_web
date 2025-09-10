@@ -1,0 +1,9 @@
+{
+  "extends": [
+    "development"
+  ],
+  "hints": {
+    "manifest-app-name": "off",
+    "no-inline-styles": "off"
+  }
+}

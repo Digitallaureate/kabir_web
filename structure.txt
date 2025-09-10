@@ -1,0 +1,48 @@
+project-kabir/
+├── public/
+│   └── assets/
+│       ├── logo.svg
+│       └── favicon.ico
+├── src/
+│   ├── components/
+│   │   ├── layout/
+│   │   │   ├── Header.astro
+│   │   │   ├── Navbar.astro
+│   │   │   ├── Footer.astro
+│   │   │   └── Layout.astro
+│   │   ├── ui/
+│   │   │   ├── ButtonCard.astro
+│   │   │   ├── ContactForm.astro
+│   │   │   └── ...
+│   │   ├── home/
+│   │   │   ├── Hero.astro
+│   │   │   ├── Timeline.astro
+│   │   │   ├── CulturalHighlights.astro
+│   │   │   ├── FeaturedMonuments.astro
+│   │   │   └── BlogPreview.astro
+│   │   ├── about/
+│   │   ├── map/
+│   │   └── blog/
+│   ├── layouts/
+│   │   └── MainLayout.astro
+│   ├── pages/
+│   │   ├── index.astro
+│   │   ├── about.astro
+│   │   ├── contact.astro
+│   │   ├── map.astro
+│   │   ├── blog/
+│   │   │   ├── index.astro
+│   │   │   └── [slug].astro
+│   │   └── admin/
+│   │       ├── index.astro
+│   │       ├── settings.astro
+│   │       ├── map.astro
+│   │       ├── blog.astro
+│   │       └── contacts.astro
+│   ├── utils/
+│   │   └── firebase.js
+│   └── styles/
+│       └── global.css
+├── firebase/
+│   └── firebaseConfig.js
+└── package.json

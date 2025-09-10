@@ -1,0 +1,197 @@
+---
+import Button from 'src/components/Button.astro';
+import Input from 'src/components/ui/Input.astro';
+import Select from 'src/components/ui/Select.astro';
+import Textarea from 'src/components/ui/Textarea.astro';
+import Modal from 'src/components/ui/Modal.astro';
+
+interface Props {
+  id: string;
+  feature?: any;
+  type?: string;
+  cities?: any[];
+  monuments?: any[];
+  onSubmit?: (data: any) => void;
+  onCancel?: () => void;
+}
+
+const { id, feature = null, type = 'city', cities = [], monuments = [] } = Astro.props;
+
+const featureTypes = [
+  { value: 'city', label: 'City' },
+  { value: 'monument', label: 'Monument' },
+  { value: 'submonument', label: 'Sub-monument' },
+  { value: 'tour', label: 'Tour' },
+  { value: 'extendedTour', label: 'Extended Tour' },
+  { value: 'route', label: 'Route' },
+];
+---
+
+<Modal id={id}>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>{feature ? 'Edit' : 'Add'} Feature</h3>
+      <button class="close-btn" id={`close-${id}`}>×</button>
+    </div>
+    <div class="modal-body">
+      <form id={`form-${id}`}>
+        <div class="form-group">
+          <label class="form-label" for="feature-type">Feature Type</label>
+          <Select
+            id="feature-type"
+            class="form-select"
+            options={featureTypes}
+            value={type}
+            disabled={!!feature}
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="feature-name">Name</label>
+          <Input
+            id="feature-name"
+            class="form-input"
+            type="text"
+            value={feature?.name || ''}
+            required
+          />
+        </div>
+
+        <div class="form-group" id="coordinates-group">
+          <label class="form-label">Coordinates</label>
+          <div class="coordinate-inputs">
+            <Input
+              id="feature-lat"
+              class="form-input"
+              type="number"
+              step="any"
+              placeholder="Latitude"
+              value={feature?.lat || ''}
+            />
+            <Input
+              id="feature-lng"
+              class="form-input"
+              type="number"
+              step="any"
+              placeholder="Longitude"
+              value={feature?.lng || ''}
+            />
+          </div>
+          <button type="button" class="btn btn-secondary" id="pick-coordinates">Pick from Map</button>
+        </div>
+
+        <div class="form-group" id="city-group" style={type === 'city' ? 'display: none;' : ''}>
+          <label class="form-label" for="feature-city">City</label>
+          <Select
+            id="feature-city"
+            class="form-select"
+            options={cities.map(city => ({ value: city.id, label: city.name }))}
+            value={feature?.city || ''}
+          />
+        </div>
+
+        <div class="form-group" id="monument-group" style={type !== 'submonument' ? 'display: none;' : ''}>
+          <label class="form-label" for="feature-monument">Parent Monument</label>
+          <Select
+            id="feature-monument"
+            class="form-select"
+            options={monuments.map(monument => ({ value: monument.id, label: monument.name }))}
+            value={feature?.monument || ''}
+          />
+        </div>
+
+        <div class="form-group" id="points-group" style={!(type === 'tour' || type === 'extendedTour' || type === 'route') ? 'display: none;' : ''}>
+          <label class="form-label" for="feature-points">Points (JSON)</label>
+          <Textarea
+            id="feature-points"
+            class="form-textarea"
+            value={feature?.points ? JSON.stringify(feature.points, null, 2) : '[]'}
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="feature-description">Description</label>
+          <Textarea
+            id="feature-description"
+            class="form-textarea"
+            value={feature?.description || ''}
+          />
+        </div>
+
+        {feature && (
+          <input type="hidden" id="feature-id" value={feature.id} />
+        )}
+      </form>
+    </div>
+    <div class="modal-footer">
+      <Button classes="btn btn-secondary" data-id={`cancel-${id}`} text="Cancel" />
+      <Button classes="btn btn-primary" data-id={`submit-${id}`} text="Save" />
+    </div>
+  </div>
+</Modal>
+
+<script define:vars={{ id }}>
+  document.addEventListener('DOMContentLoaded', () => {
+    const modalId = id;
+    const form = document.getElementById(`form-${modalId}`);
+    const typeSelect = document.getElementById('feature-type');
+    const coordinatesGroup = document.getElementById('coordinates-group');
+    const cityGroup = document.getElementById('city-group');
+    const monumentGroup = document.getElementById('monument-group');
+    const pointsGroup = document.getElementById('points-group');
+    const submitBtn = document.getElementById(`submit-${modalId}`);
+    const cancelBtn = document.getElementById(`cancel-${modalId}`);
+    const closeBtn = document.getElementById(`close-${modalId}`);
+    const pickCoordinatesBtn = document.getElementById('pick-coordinates');
+
+    typeSelect.addEventListener('change', (e) => {
+      const type = e.target.value;
+      coordinatesGroup.style.display = type === 'tour' || type === 'extendedTour' || type === 'route' ? 'none' : 'block';
+      cityGroup.style.display = type === 'city' ? 'none' : 'block';
+      monumentGroup.style.display = type === 'submonument' ? 'block' : 'none';
+      pointsGroup.style.display = type === 'tour' || type === 'extendedTour' || type === 'route' ? 'block' : 'none';
+    });
+
+    pickCoordinatesBtn.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('pickCoordinates'));
+    });
+
+    submitBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const type = document.getElementById('feature-type').value;
+      const name = document.getElementById('feature-name').value;
+      const description = document.getElementById('feature-description').value;
+      const id = document.getElementById('feature-id')?.value;
+
+      const data = { name, description: description || undefined };
+      if (type === 'city' || type === 'monument' || type === 'submonument') {
+        data.lat = parseFloat(document.getElementById('feature-lat').value);
+        data.lng = parseFloat(document.getElementById('feature-lng').value);
+        if (type !== 'city') {
+          data.city = document.getElementById('feature-city').value;
+        }
+        if (type === 'submonument') {
+          data.monument = document.getElementById('feature-monument').value;
+        }
+      } else {
+        try {
+          data.points = JSON.parse(document.getElementById('feature-points').value);
+        } catch (err) {
+          alert('Invalid points JSON format.');
+          return;
+        }
+      }
+      if (id) data.id = id;
+
+      window.dispatchEvent(new CustomEvent('formSubmit', { detail: { data, type } }));
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('formCancel'));
+    });
+
+    closeBtn.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('formCancel'));
+    });
+  });
+</script>

@@ -1,0 +1,187 @@
+---
+// Tabbed interface component
+interface Tab {
+  id: string;
+  title: string;
+  content: string;
+}
+
+interface Props {
+  tabs: Tab[];
+  defaultActiveTab?: string;
+  variant?: 'default' | 'pills' | 'underline';
+  alignment?: 'left' | 'center' | 'right';
+  classes?: string;
+}
+
+const { 
+  tabs, 
+  defaultActiveTab = tabs[0]?.id, 
+  variant = 'default',
+  alignment = 'left',
+  classes = '' 
+} = Astro.props;
+---
+
+<div class:list={['tabs-container', `tabs-${variant}`, `tabs-${alignment}`, classes]}>
+  <div class="tabs-header">
+    {tabs.map((tab) => (
+      <button 
+        class:list={['tab-button', { 'active': tab.id === defaultActiveTab }]} 
+        data-tab={tab.id}
+      >
+        {tab.title}
+      </button>
+    ))}
+  </div>
+  <div class="tabs-content">
+    {tabs.map((tab) => (
+      <div 
+        class:list={['tab-panel', { 'active': tab.id === defaultActiveTab }]} 
+        data-tab-content={tab.id}
+      >
+        <Fragment set:html={tab.content} />
+      </div>
+    ))}
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const tabContainers = document.querySelectorAll('.tabs-container');
+  
+  tabContainers.forEach(container => {
+    const tabButtons = container.querySelectorAll('.tab-button');
+    const tabPanels = container.querySelectorAll('.tab-panel');
+    
+    tabButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const tabId = button.getAttribute('data-tab');
+        
+        // Remove active class from all buttons and panels
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+        tabPanels.forEach(panel => panel.classList.remove('active'));
+        
+        // Add active class to selected button and panel
+        button.classList.add('active');
+        const tabContent = container.querySelector(`[data-tab-content="${tabId}"]`);
+        if (tabContent) {
+          tabContent.classList.add('active');
+        }
+      });
+    });
+  });
+});
+</script>
+
+<style>
+  .tabs-container {
+    margin-bottom: 2rem;
+  }
+
+  .tabs-header {
+    display: flex;
+    border-bottom: 1px solid #e1e1e1;
+    margin-bottom: 1.5rem;
+  }
+
+  .tabs-center .tabs-header {
+    justify-content: center;
+  }
+
+  .tabs-right .tabs-header {
+    justify-content: flex-end;
+  }
+
+  .tab-button {
+    padding: 0.75rem 1.5rem;
+    background: none;
+    border: none;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .tab-button:hover {
+    color: #c2634b;
+  }
+
+  .tab-button.active {
+    color: #c2634b;
+  }
+
+  /* Default variant styling */
+  .tabs-default .tab-button.active {
+    color: #c2634b;
+    border-bottom: 2px solid #c2634b;
+    margin-bottom: -1px;
+  }
+
+  /* Pills variant styling */
+  .tabs-pills .tabs-header {
+    border-bottom: none;
+    gap: 0.5rem;
+  }
+
+  .tabs-pills .tab-button {
+    border-radius: 50px;
+    padding: 0.5rem 1.25rem;
+  }
+
+  .tabs-pills .tab-button.active {
+    background-color: #c2634b;
+    color: white;
+  }
+
+  /* Underline variant styling */
+  .tabs-underline .tab-button {
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+
+  .tabs-underline .tab-button.active {
+    border-bottom-color: #c2634b;
+  }
+
+  .tab-panel {
+    display: none;
+  }
+
+  .tab-panel.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @media (max-width: 640px) {
+    .tabs-header {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .tabs-default .tabs-header,
+    .tabs-underline .tabs-header {
+      border-bottom: none;
+    }
+
+    .tabs-default .tab-button,
+    .tabs-underline .tab-button {
+      border: 1px solid #e1e1e1;
+      border-radius: 4px;
+      margin-bottom: 0;
+    }
+
+    .tabs-default .tab-button.active,
+    .tabs-underline .tab-button.active {
+      border-color: #c2634b;
+      border-bottom-color: #c2634b;
+    }
+  }
+</style>

@@ -1,0 +1,252 @@
+---
+// Blog card component for displaying blog posts
+interface Props {
+  title: string;
+  excerpt: string;
+  imageUrl: string;
+  slug: string;
+  date: string;
+  author?: string;
+  categories?: string[];
+  variant?: 'default' | 'featured' | 'minimal';
+  classes?: string;
+}
+
+const { 
+  title, 
+  excerpt, 
+  imageUrl,
+  slug,
+  date,
+  author,
+  categories = [],
+  variant = 'default',
+  classes = '' 
+} = Astro.props;
+
+// Format date
+const formattedDate = new Date(date).toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric'
+});
+---
+
+<article class:list={['blog-card', `blog-card-${variant}`, classes]}>
+  <a href={`/blogs/${slug}`} class="blog-image-link">
+    <div class="blog-image">
+      <img src={imageUrl} alt={title} loading="lazy" />
+    </div>
+  </a>
+  
+  <div class="blog-content">
+    {categories.length > 0 && (
+      <div class="blog-categories">
+        {categories.map((category) => (
+          <a href={`/blogs/category/${category.toLowerCase()}`} class="blog-category">
+            {category}
+          </a>
+        ))}
+      </div>
+    )}
+    
+    <h3 class="blog-title">
+      <a href={`/blogs/${slug}`}>{title}</a>
+    </h3>
+    
+    <div class="blog-meta">
+      <time datetime={date}>{formattedDate}</time>
+      {author && (
+        <>
+          <span class="meta-separator">·</span>
+          <span class="blog-author">{author}</span>
+        </>
+      )}
+    </div>
+    
+    <p class="blog-excerpt">{excerpt}</p>
+    
+    <a href={`/blogs/${slug}`} class="blog-read-more">
+      Read More
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+        <polyline points="12 5 19 12 12 19"></polyline>
+      </svg>
+    </a>
+  </div>
+</article>
+
+<style>
+  .blog-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #fff;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+  }
+
+  .blog-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+  }
+
+  .blog-image {
+    position: relative;
+    aspect-ratio: 16/9;
+    overflow: hidden;
+  }
+
+  .blog-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+
+  .blog-card:hover .blog-image img {
+    transform: scale(1.05);
+  }
+
+  .blog-content {
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    flex-grow: 1;
+  }
+
+  .blog-categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .blog-category {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #c2634b;
+    padding: 0.25rem 0.5rem;
+    background-color: rgba(194, 99, 75, 0.1);
+    border-radius: 4px;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+  }
+
+  .blog-category:hover {
+    background-color: rgba(194, 99, 75, 0.2);
+  }
+
+  .blog-title {
+    font-size: 1.25rem;
+    margin: 0 0 1rem;
+    line-height: 1.4;
+  }
+
+  .blog-title a {
+    color: #333;
+    text-decoration: none;
+    transition: color 0.3s ease;
+  }
+
+  .blog-title a:hover {
+    color: #c2634b;
+  }
+
+  .blog-meta {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .meta-separator {
+    margin: 0 0.5rem;
+  }
+
+  .blog-excerpt {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #555;
+    margin-bottom: 1.5rem;
+  }
+
+  .blog-read-more {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #c2634b;
+    text-decoration: none;
+    margin-top: auto;
+    transition: color 0.3s ease;
+  }
+
+  .blog-read-more:hover {
+    color: #ad5541;
+  }
+
+  .blog-read-more svg {
+    transition: transform 0.3s ease;
+  }
+
+  .blog-read-more:hover svg {
+    transform: translateX(4px);
+  }
+
+  /* Featured variant */
+  .blog-card-featured {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .blog-card-featured .blog-image {
+    flex: 0 0 50%;
+    max-width: 50%;
+    aspect-ratio: auto;
+    height: auto;
+  }
+
+  .blog-card-featured .blog-title {
+    font-size: 1.5rem;
+  }
+
+  /* Minimal variant */
+  .blog-card-minimal {
+    box-shadow: none;
+    background-color: transparent;
+  }
+
+  .blog-card-minimal:hover {
+    box-shadow: none;
+  }
+
+  .blog-card-minimal .blog-content {
+    padding: 1rem 0;
+  }
+
+  @media (max-width: 768px) {
+    .blog-card-featured {
+      flex-direction: column;
+    }
+
+    .blog-card-featured .blog-image {
+      flex: 0 0 100%;
+      max-width: 100%;
+      aspect-ratio: 16/9;
+    }
+
+    .blog-title {
+      font-size: 1.2rem;
+    }
+
+    .blog-card-featured .blog-title {
+      font-size: 1.35rem;
+    }
+  }
+</style>

@@ -1,0 +1,267 @@
+---
+interface Props {
+  withName?: boolean;
+  withPhone?: boolean;
+  withSubject?: boolean;
+  submitButtonText?: string;
+  fullWidth?: boolean;
+  classes?: string;
+}
+
+const { 
+  withName = true,
+  withPhone = false,
+  withSubject = false,
+  submitButtonText = 'Send Message',
+  fullWidth = false,
+  classes = '' 
+} = Astro.props;
+---
+
+<div class:list={['contact-form-container', fullWidth && 'form-full-width', classes]}>
+  <form id="contactForm" class="contact-form">
+    {withName && (
+      <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required />
+      </div>
+    )}
+    
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required />
+    </div>
+    
+    {withPhone && (
+      <div class="form-group">
+        <label for="phone">Phone</label>
+        <input type="tel" id="phone" name="phone" />
+      </div>
+    )}
+    
+    {withSubject && (
+      <div class="form-group">
+        <label for="subject">Subject</label>
+        <input type="text" id="subject" name="subject" required />
+      </div>
+    )}
+    
+    <div class="form-group">
+      <label for="message">Message</label>
+      <textarea id="message" name="message" rows="5" required></textarea>
+    </div>
+    
+    <div class="form-submit">
+      <button type="submit" class="btn btn-primary btn-large">
+        {submitButtonText}
+      </button>
+      <p id="formStatus" class="form-status"></p>
+    </div>
+  </form>
+</div>
+
+<script>
+  import { db } from '../../utils/firebase';
+  import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const contactForm = document.getElementById('contactForm');
+    const formStatus = document.getElementById('formStatus');
+    const submitButton = document.querySelector('button[type="submit"]') as HTMLButtonElement;
+    
+    if (contactForm && formStatus) {
+      contactForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.textContent = 'Sending...';
+        }
+        
+        formStatus.textContent = 'Sending...';
+        formStatus.className = 'form-status status-sending';
+        
+        const timeoutId = setTimeout(() => {
+          if (formStatus.textContent === 'Sending...') {
+            formStatus.textContent = 'Request timed out. Please try again.';
+            formStatus.className = 'form-status status-error';
+            
+            if (submitButton) {
+              submitButton.disabled = false;
+              submitButton.textContent = 'Send Message';
+            }
+          }
+        }, 15000);
+        
+        try {
+          const formData = new FormData(contactForm as HTMLFormElement);
+          const data = Object.fromEntries(formData.entries());
+          
+          const firestoreData = {
+            ...data,
+            createdAt: serverTimestamp(),
+            status: 'unread',
+          };
+          
+          const docRef = await addDoc(collection(db, 'contactSubmissions'), firestoreData);
+          
+          clearTimeout(timeoutId);
+          
+          formStatus.textContent = 'Message sent successfully!';
+          formStatus.className = 'form-status status-success';
+          
+          (contactForm as HTMLFormElement).reset();
+          
+          setTimeout(() => {
+            formStatus.textContent = '';
+            formStatus.className = 'form-status';
+          }, 5000);
+          
+        } catch (error) {
+          clearTimeout(timeoutId);
+          
+          console.error('Error submitting form:', error);
+          
+          formStatus.textContent = 'Failed to send message. Please try again.';
+          formStatus.className = 'form-status status-error';
+        } finally {
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Send Message';
+          }
+        }
+      });
+    }
+  });
+</script>
+
+<style>
+  .contact-form-container {
+    background: linear-gradient(to bottom right, #ffffff, #fcf9f8);
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-sizing: border-box;
+  }
+
+  .contact-form-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+  }
+
+  .form-full-width {
+    max-width: 100%;
+  }
+
+  .contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    box-sizing: border-box;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .form-group label {
+    font-weight: 500;
+    color: #333;
+    font-size: 0.95rem;
+    margin-left: 4px;
+  }
+
+  .form-group input, 
+  .form-group textarea {
+    padding: 0.875rem 1rem;
+    border: 2px solid #e8e8e8;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: all 0.3s ease;
+    background-color: #f8f9fa;
+  }
+
+  .form-group input:focus, 
+  .form-group textarea:focus {
+    outline: none;
+    border-color: #c2634b;
+    box-shadow: 0 0 0 4px rgba(194, 99, 75, 0.1);
+    background-color: #fff;
+  }
+
+  .form-group textarea {
+    resize: vertical;
+    min-height: 140px;
+  }
+
+  .form-submit {
+    margin-top: 0.5rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 2rem;
+    font-weight: 500;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: none;
+    font-size: 1.1rem;
+    width: 100%;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #c2634b 0%, #ad5541 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(194, 99, 75, 0.25);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  .form-status {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    text-align: center;
+    min-height: 1.5rem;
+    font-weight: 500;
+  }
+
+  .status-sending {
+    color: #3d5a80;
+  }
+
+  .status-success {
+    color: #28a745;
+  }
+
+  .status-error {
+    color: #dc3545;
+  }
+
+  @media (max-width: 640px) {
+    .contact-form-container {
+      padding: 1.75rem;
+    }
+
+    .btn {
+      padding: 0.875rem 1.5rem;
+      font-size: 1rem;
+    }
+  }
+</style>

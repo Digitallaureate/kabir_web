@@ -1,0 +1,75 @@
+---
+interface Props {
+  message?: string;
+  type?: 'info' | 'success' | 'error';
+  visible?: boolean;
+}
+
+const { message = 'Ready', type = 'info', visible = false } = Astro.props;
+---
+
+<div
+  class:list={["status-panel", type]}
+  id="status-panel"
+  style={visible ? 'display: block;' : 'display: none;'}
+>
+  <div class="status-content">
+    <span class="status-icon">
+      {type === 'info' && 'ℹ️'}
+      {type === 'success' && '✅'}
+      {type === 'error' && '❌'}
+    </span>
+    <span class="status-message" id="status-message">{message}</span>
+  </div>
+</div>
+
+<style>
+  .status-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem;
+    max-width: 400px;
+    z-index: 2000;
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+  }
+
+  .status-panel.success {
+    background: #48bb78;
+    color: #ffffff;
+  }
+
+  .status-panel.error {
+    background: #f56565;
+    color: #ffffff;
+  }
+
+  .status-panel.info {
+    background: #f8f9fa;
+    border: 2px solid #4a5568;
+    color: #4a5568;
+  }
+
+  .status-content {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .status-icon {
+    font-size: 1.2rem;
+  }
+
+  .status-message {
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 768px) {
+    .status-panel {
+      left: 10px;
+      right: 10px;
+      top: 10px;
+    }
+  }
+</style>

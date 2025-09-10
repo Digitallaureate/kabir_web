@@ -1,0 +1,981 @@
+---
+import AdminLayout from '../../components/layout/AdminLayout.astro';
+import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { app } from '../../utils/firebase';
+
+const db = getFirestore(app);
+
+// Use contactSubmissions collection instead of contacts
+const contactsCollection = collection(db, 'contactSubmissions');
+const contactsSnapshot = await getDocs(contactsCollection);
+const contacts = contactsSnapshot.docs.map(doc => {
+  const data = doc.data();
+  return {
+    id: doc.id,
+    name: data.name || 'Unknown',
+    email: data.email || 'N/A',
+    createdAt: data.createdAt || null,
+    phone: data.phone || 'N/A',
+    status: data.status || 'unread',
+    subject: data.subject || 'No Subject',
+    message: data.message || 'No Message',
+    ...data
+  };
+});
+
+contacts.sort((a, b) => {
+  const dateA = new Date(a.createdAt || 0);
+  const dateB = new Date(b.createdAt || 0);
+  return dateB.getTime() - dateA.getTime();
+});
+
+const formatDate = (dateString: string | number | Date) => {
+  const date = new Date(dateString);
+  return date.toLocaleString('en-IN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true,
+    timeZoneName: 'short'
+  });
+};
+
+const truncateText = (text: string, maxLength = 30) => {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength) + '...';
+};
+---
+
+<AdminLayout title="Contact Entries" activePage="contacts">
+  <div class="admin-container">
+    <div class="admin-header">
+      <div>
+        <h1>Contact Entries</h1>
+        <p class="header-subtitle">View and manage contact form submissions</p>
+      </div>
+      <div class="header-actions">
+        <div class="filter-container">
+          <select id="statusFilter" class="filter-select">
+            <option value="all">All Entries</option>
+            <option value="unread">Unread</option>
+            <option value="read">Read</option>
+          </select>
+        </div>
+        <button id="refreshButton" class="refresh-btn" title="Refresh Data">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
+          </svg>
+          <span>Refresh</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th style="width: 15%;">Name</th>
+              <th style="width: 15%;">Email</th>
+              <th style="width: 12%;">Phone</th>
+              <th style="width: 12%;">Subject</th>
+              <th style="width: 20%;">Message</th>
+              <th style="width: 8%;">Status</th>
+              <th style="width: 15%;">Created At</th>
+              <th style="width: 8%;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="contactsTableBody">
+            {contacts.map((contact) => (
+              <tr class={contact.status === 'unread' ? 'highlight-row' : ''} data-id={contact.id} data-status={contact.status}>
+                <td>{contact.name}</td>
+                <td>
+                  <a href={`mailto:${contact.email}`} class="email-link">{contact.email}</a>
+                </td>
+                <td>
+                  <a href={`tel:${contact.phone}`} class="phone-link">{contact.phone}</a>
+                </td>
+                <td>{contact.subject}</td>
+                <td class="message-cell">
+                  <div class="message-preview" title={contact.message}>
+                    {truncateText(contact.message)}
+                  </div>
+                  <button class="view-full-btn" data-message={contact.message}>View</button>
+                </td>
+                <td>
+                  <span class={`status-badge ${contact.status === 'unread' ? 'status-unread' : 'status-read'}`}>
+                    {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
+                  </span>
+                </td>
+                <td>{formatDate(contact.createdAt)}</td>
+                <td>
+                  <div class="action-buttons">
+                    {contact.status === 'unread' ? (
+                      <button class="action-btn mark-read-btn" title="Mark as Read" data-id={contact.id}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </button>
+                    ) : (
+                      <button class="action-btn mark-unread-btn" title="Mark as Unread" data-id={contact.id}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                      </button>
+                    )}
+                    <button class="action-btn delete-btn" title="Delete" data-id={contact.id} data-name={contact.name}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18"></path>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {contacts.length === 0 && (
+              <tr>
+                <td colspan="8" class="no-data">
+                  <div class="no-data-message">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <p>No contact entries found</p>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Message Modal -->
+  <div id="messageModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Message Details</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="modalMessage"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="deleteModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Confirm Deletion</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this contact from <span id="deleteContactName"></span>?</p>
+        <p class="warning-text">This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelDeleteBtn" class="modal-close-btn">Cancel</button>
+        <button id="confirmDeleteBtn" class="confirm-delete-btn">Delete</button>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  import { getFirestore, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+  import { app } from '../../utils/firebase';
+  
+  const db = getFirestore(app);
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const contactsTableBody = document.getElementById('contactsTableBody');
+    const statusFilter = document.getElementById('statusFilter');
+    const refreshButton = document.getElementById('refreshButton');
+    const messageModal = document.getElementById('messageModal');
+    const modalMessage = document.getElementById('modalMessage');
+    const closeModalButtons = document.querySelectorAll('.close-modal, .modal-close-btn');
+    const deleteModal = document.getElementById('deleteModal');
+    const deleteContactName = document.getElementById('deleteContactName');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    
+    let currentDeleteId: string | null = null;
+
+    function showMessageModal(message: string) {
+      if (modalMessage) {
+        modalMessage.textContent = message;
+      }
+      if (messageModal) {
+        messageModal.classList.add('show');
+      }
+      document.body.classList.add('modal-open');
+    }
+    
+    function showDeleteModal(id: string, name: string) {
+      currentDeleteId = id;
+      if (deleteContactName) {
+        deleteContactName.textContent = name;
+      }
+      if (deleteModal) {
+        deleteModal.classList.add('show');
+      }
+      document.body.classList.add('modal-open');
+    }
+    
+    function closeModals() {
+      if (messageModal) {
+        messageModal.classList.remove('show');
+      }
+      if (deleteModal) {
+        deleteModal.classList.remove('show');
+      }
+      document.body.classList.remove('modal-open');
+    }
+
+    async function markAsRead(id: string) {
+      try {
+        if (!id) return;
+        
+        // Use contactSubmissions instead of contacts
+        const contactRef = doc(db, 'contactSubmissions', id);
+        await updateDoc(contactRef, {
+          status: 'read'
+        });
+        
+        const row = document.querySelector(`tr[data-id="${id}"]`);
+        if (row) {
+          row.classList.remove('highlight-row');
+          row.setAttribute('data-status', 'read');
+          
+          const statusBadge = row.querySelector('.status-badge');
+          if (statusBadge) {
+            statusBadge.classList.remove('status-unread');
+            statusBadge.classList.add('status-read');
+            statusBadge.textContent = 'Read';
+          }
+          
+          const actionCell = row.querySelector('td:last-child');
+          if (actionCell) {
+            const name = row.querySelector('td:first-child')?.textContent || '';
+            actionCell.innerHTML = `
+              <div class="action-buttons">
+                <button class="action-btn mark-unread-btn" title="Mark as Unread" data-id="${id}">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                </button>
+                <button class="action-btn delete-btn" title="Delete" data-id="${id}" data-name="${name}">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
+            `;
+          }
+          
+          attachEventListeners();
+          showNotification('Entry marked as read', 'success');
+        }
+      } catch (error) {
+        console.error("Error updating document: ", error);
+        showNotification('Failed to update status', 'error');
+      }
+    }
+    
+    async function markAsUnread(id: string) {
+      try {
+        if (!id) return;
+        
+        // Use contactSubmissions instead of contacts
+        const contactRef = doc(db, 'contactSubmissions', id);
+        await updateDoc(contactRef, {
+          status: 'unread'
+        });
+        
+        const row = document.querySelector(`tr[data-id="${id}"]`);
+        if (row) {
+          row.classList.add('highlight-row');
+          row.setAttribute('data-status', 'unread');
+          
+          const statusBadge = row.querySelector('.status-badge');
+          if (statusBadge) {
+            statusBadge.classList.remove('status-read');
+            statusBadge.classList.add('status-unread');
+            statusBadge.textContent = 'Unread';
+          }
+          
+          const actionCell = row.querySelector('td:last-child');
+          if (actionCell) {
+            const name = row.querySelector('td:first-child')?.textContent || '';
+            actionCell.innerHTML = `
+              <div class="action-buttons">
+                <button class="action-btn mark-read-btn" title="Mark as Read" data-id="${id}">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </button>
+                <button class="action-btn delete-btn" title="Delete" data-id="${id}" data-name="${name}">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
+            `;
+          }
+          
+          attachEventListeners();
+          showNotification('Entry marked as unread', 'success');
+        }
+      } catch (error) {
+        console.error("Error updating document: ", error);
+        showNotification('Failed to update status', 'error');
+      }
+    }
+    
+    async function deleteContact(id: string) {
+      if (!id) return;
+      
+      try {
+        // Use contactSubmissions instead of contacts
+        await deleteDoc(doc(db, 'contactSubmissions', id));
+        
+        const row = document.querySelector(`tr[data-id="${id}"]`);
+        if (row) row.remove();
+        
+        closeModals();
+        showNotification('Contact entry deleted successfully', 'success');
+        
+        if (contactsTableBody && contactsTableBody.children.length === 0) {
+          contactsTableBody.innerHTML = `
+            <tr>
+              <td colspan="8" class="no-data">
+                <div class="no-data-message">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                  <p>No contact entries found</p>
+                </div>
+              </td>
+            </tr>
+          `;
+        }
+      } catch (error) {
+        console.error("Error deleting document: ", error);
+        showNotification('Failed to delete contact', 'error');
+      }
+    }
+    
+    function filterContacts() {
+      if (!statusFilter) return;
+      
+      const status = (statusFilter as HTMLSelectElement).value;
+      const rows = document.querySelectorAll('#contactsTableBody tr:not(.no-data)');
+      let visibleCount = 0;
+      
+      rows.forEach(row => {
+        const rowStatus = row.getAttribute('data-status');
+        if (status === 'all' || rowStatus === status) {
+          (row as HTMLElement).style.display = '';
+          visibleCount++;
+        } else {
+          (row as HTMLElement).style.display = 'none';
+        }
+      });
+      
+      const noFilteredData = document.querySelector('#contactsTableBody .no-filtered-data');
+      if (visibleCount === 0 && rows.length > 0) {
+        if (!noFilteredData && contactsTableBody) {
+          contactsTableBody.innerHTML += `
+            <tr class="no-filtered-data">
+              <td colspan="8" class="no-data">
+                <div class="no-data-message">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                  <p>No ${status !== 'all' ? status : ''} contacts found</p>
+                </div>
+              </td>
+            </tr>
+          `;
+        }
+      } else if (noFilteredData) {
+        noFilteredData.remove();
+      }
+    }
+    
+    function showNotification(message: string, type: 'info' | 'success' | 'error' = 'info') {
+      let notification = document.querySelector('.notification');
+      if (!notification) {
+        notification = document.createElement('div');
+        notification.className = 'notification';
+        document.body.appendChild(notification);
+      }
+      
+      notification.textContent = message;
+      notification.className = `notification ${type}`;
+      notification.classList.add('show');
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
+    }
+    
+    function refreshPage() {
+      location.reload();
+    }
+    
+    function attachEventListeners() {
+      document.querySelectorAll('.view-full-btn').forEach(button => {
+        button.addEventListener('click', () => {
+          const message = button.getAttribute('data-message');
+          showMessageModal(message || '');
+        });
+      });
+      
+      document.querySelectorAll('.mark-read-btn').forEach(button => {
+        button.addEventListener('click', () => {
+          const id = button.getAttribute('data-id');
+          if (id) {
+            markAsRead(id);
+          }
+        });
+      });
+      
+      document.querySelectorAll('.mark-unread-btn').forEach(button => {
+        button.addEventListener('click', () => {
+          const id = button.getAttribute('data-id');
+          if (id) {
+            markAsUnread(id);
+          }
+        });
+      });
+      
+      document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', () => {
+          const id = button.getAttribute('data-id');
+          const name = button.getAttribute('data-name');
+          if (id && name) {
+            showDeleteModal(id, name);
+          }
+        });
+      });
+    }
+    
+    attachEventListeners();
+    
+    if (statusFilter) {
+      statusFilter.addEventListener('change', filterContacts);
+    }
+    
+    if (refreshButton) {
+      refreshButton.addEventListener('click', refreshPage);
+    }
+    
+    closeModalButtons.forEach(button => {
+      button.addEventListener('click', closeModals);
+    });
+    
+    if (confirmDeleteBtn) {
+      confirmDeleteBtn.addEventListener('click', () => {
+        if (currentDeleteId) {
+          deleteContact(currentDeleteId);
+        }
+      });
+    }
+    
+    window.addEventListener('click', (event) => {
+      if (event.target === messageModal || event.target === deleteModal) {
+        closeModals();
+      }
+    });
+  });
+</script>
+
+<style>
+.admin-container {
+  padding: 1.5rem;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.admin-header h1 {
+  color: #333;
+  font-size: 1.8rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.header-subtitle {
+  font-size: 0.95rem;
+  color: #666;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.filter-container {
+  position: relative;
+}
+
+.filter-select {
+  padding: 0.5rem 2rem 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  font-size: 0.9rem;
+  color: #333;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filter-select:hover {
+  border-color: #c2634b;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #c2634b;
+  box-shadow: 0 0 0 2px rgba(194, 99, 75, 0.2);
+}
+
+.filter-container::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #666;
+  pointer-events: none;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #f8f8f8;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #333;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+  background-color: #f0f0f0;
+  border-color: #c2634b;
+  color: #c2634b;
+}
+
+.admin-card {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.table-container {
+  overflow-x: auto;
+  padding: 0.5rem;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.admin-table th {
+  background-color: #f8f8f8;
+  padding: 1rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid #e8e8e8;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.admin-table td {
+  padding: 0.9rem 0.75rem;
+  border-bottom: 1px solid #e8e8e8;
+  vertical-align: middle;
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-table tbody tr {
+  transition: background-color 0.2s;
+}
+
+.admin-table tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+.highlight-row {
+  background-color: rgba(194, 99, 75, 0.05);
+}
+
+.highlight-row:hover {
+  background-color: rgba(194, 99, 75, 0.1) !important;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 100px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.status-unread {
+  background-color: rgba(255, 152, 0, 0.1);
+  color: #f57c00;
+}
+
+.status-read {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #43a047;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background-color: #fff;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  border-color: #c2634b;
+  color: #c2634b;
+  background-color: rgba(194, 99, 75, 0.05);
+}
+
+.mark-read-btn:hover {
+  color: #43a047;
+  border-color: #43a047;
+  background-color: rgba(76, 175, 80, 0.05);
+}
+
+.delete-btn:hover {
+  color: #e53935;
+  border-color: #e53935;
+  background-color: rgba(229, 57, 53, 0.05);
+}
+
+.email-link, .phone-link {
+  color: #c2634b;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.email-link:hover, .phone-link:hover {
+  color: #9e4f3c;
+  text-decoration: underline;
+}
+
+.message-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.message-preview {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.view-full-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: transparent;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-full-btn:hover {
+  border-color: #c2634b;
+  color: #c2634b;
+  background-color: rgba(194, 99, 75, 0.05);
+}
+
+.no-data {
+  padding: 2rem !important;
+  text-align: center;
+}
+
+.no-data-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  color: #666;
+}
+
+.no-data-message svg {
+  color: #999;
+}
+
+.no-data-message p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  overflow: auto;
+  padding: 1rem;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 600px;
+  animation: modal-appear 0.3s ease;
+}
+
+@keyframes modal-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: #333;
+  font-weight: 600;
+}
+
+.close-modal {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.close-modal:hover {
+  color: #c2634b;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  color: #444;
+  line-height: 1.6;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e8e8e8;
+  background-color: #f9f9f9;
+  border-radius: 0 0 8px 8px;
+}
+
+.modal-close-btn, .confirm-delete-btn {
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modal-close-btn {
+  background-color: #f2f2f2;
+  border: 1px solid #ddd;
+  color: #666;
+}
+
+.modal-close-btn:hover {
+  background-color: #e6e6e6;
+  border-color: #ccc;
+}
+
+.confirm-delete-btn {
+  background-color: #e53935;
+  border: 1px solid #d32f2f;
+  color: white;
+}
+
+.confirm-delete-btn:hover {
+  background-color: #d32f2f;
+  border-color: #c62828;
+}
+
+.warning-text {
+  color: #e53935;
+  font-weight: 500;
+  margin-top: 0.5rem;
+}
+
+.notification {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  padding: 1rem 1.5rem;
+  border-radius: 6px;
+  background-color: #333;
+  color: white;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(150%);
+  transition: transform 0.3s ease;
+  z-index: 1100;
+  max-width: 350px;
+}
+
+.notification.show {
+  transform: translateY(0);
+}
+
+.notification.success {
+  background-color: #43a047;
+}
+
+.notification.error {
+  background-color: #e53935;
+}
+
+.notification.info {
+  background-color: #1e88e5;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+@media screen and (max-width: 768px) {
+  .admin-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .header-actions {
+    width: 100%;
+  }
+  
+  .filter-select {
+    width: 100%;
+  }
+  
+  .modal-content {
+    max-width: 95%;
+  }
+}
+
+@media screen and (max-width: 576px) {
+  .action-buttons {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-container {
+    width: 100%;
+  }
+  
+  .refresh-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+</style>

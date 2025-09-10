@@ -1,0 +1,564 @@
+---
+const { redirect = '/admin' } = Astro.props;
+
+// Get Firebase config from environment variables
+const firebaseConfig = {
+  apiKey: import.meta.env.FIREBASE_API_KEY,
+  authDomain: import.meta.env.FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.FIREBASE_APP_ID
+};
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Project Kabir Admin Login" />
+    <title>Login - Project Kabir</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase CDN -->
+    <script type="module" define:vars={{ firebaseConfig }}>
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+      import { 
+        getAuth, 
+        signInWithEmailAndPassword, 
+        onAuthStateChanged 
+      } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+
+      // Auth functions
+      async function loginUser({ email, password }) {
+        try {
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          return {
+            uid: userCredential.user.uid,
+            email: userCredential.user.email,
+            displayName: userCredential.user.displayName,
+            emailVerified: userCredential.user.emailVerified
+          };
+        } catch (error) {
+          throw new Error(getErrorMessage(error.code));
+        }
+      }
+
+      function onAuthStateChange(callback) {
+        return onAuthStateChanged(auth, (firebaseUser) => {
+          const user = firebaseUser ? {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            emailVerified: firebaseUser.emailVerified
+          } : null;
+          callback(user);
+        });
+      }
+
+      function getErrorMessage(errorCode) {
+        switch (errorCode) {
+          case 'auth/user-not-found':
+            return 'No user found with this email';
+          case 'auth/wrong-password':
+            return 'Incorrect password';
+          case 'auth/invalid-credential':
+            return 'Invalid email or password';
+          case 'auth/too-many-requests':
+            return 'Too many attempts. Please try again later';
+          case 'auth/invalid-email':
+            return 'Invalid email address';
+          default:
+            return 'Authentication failed. Please try again';
+        }
+      }
+
+      // Make functions available globally
+      window.authFunctions = {
+        loginUser,
+        onAuthStateChange
+      };
+
+      // Initialize after DOM loads
+      document.addEventListener('DOMContentLoaded', () => {
+        initializeAuth();
+      });
+
+      function initializeAuth() {
+        const redirect = '/admin';
+        const form = document.getElementById('loginForm');
+        const errorDiv = document.getElementById('error-message');
+        const loginBtn = document.getElementById('loginBtn');
+        const btnText = loginBtn.querySelector('.btn-text');
+        const btnLoading = loginBtn.querySelector('.btn-loading');
+        const passwordToggle = document.getElementById('passwordToggle');
+        const passwordInput = document.getElementById('password');
+        const authLoader = document.getElementById('authLoader');
+
+        // Check auth state and redirect if already logged in
+        const unsubscribe = onAuthStateChange((user) => {
+          if (user) {
+            window.location.href = redirect;
+          } else {
+            authLoader.classList.add('hidden');
+          }
+        });
+
+        // Password toggle
+        passwordToggle.addEventListener('click', () => {
+          const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+          passwordInput.setAttribute('type', type);
+          
+          const eyeIcon = passwordToggle.querySelector('.eye-icon');
+          if (eyeIcon) {
+            if (type === 'text') {
+              eyeIcon.innerHTML = `
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <path d="M21 4l-19 16"/>
+                <circle cx="12" cy="12" r="3"/>
+              `;
+            } else {
+              eyeIcon.innerHTML = `
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              `;
+            }
+          }
+        });
+
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          const formData = new FormData(form);
+          const email = formData.get('email');
+          const password = formData.get('password');
+
+          errorDiv.classList.add('hidden');
+          loginBtn.disabled = true;
+          btnText.classList.add('hidden');
+          btnLoading.classList.remove('hidden');
+
+          try {
+            const user = await loginUser({ email, password });
+            localStorage.setItem('authUser', JSON.stringify(user));
+            window.location.href = redirect;
+          } catch (error) {
+            errorDiv.textContent = error.message || 'Login failed';
+            errorDiv.classList.remove('hidden');
+          } finally {
+            loginBtn.disabled = false;
+            btnText.classList.remove('hidden');
+            btnLoading.classList.add('hidden');
+          }
+        });
+
+        window.addEventListener('beforeunload', () => {
+          unsubscribe();
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div class="auth-loader" id="authLoader">
+      <div class="loader-content">
+        <div class="loader-icon">
+          <svg width="80" height="80" viewBox="0 0 100 100">
+            <path class="loader-path" d="M10,50 A40,40 0 1,1 90,50 A40,40 0 1,1 10,50 Z" />
+            <path class="loader-monument" d="M50,10 L65,40 L80,90 H20 L35,40 Z" />
+          </svg>
+        </div>
+        <div class="loader-text">Project Kabir</div>
+      </div>
+    </div>
+
+    <div class="auth-container">
+      <div class="auth-form-wrapper">
+        <div class="auth-header">
+          <div class="logo-section">
+            <div class="logo-icon">
+              <svg width="40" height="40" viewBox="0 0 100 100">
+                <path d="M50,10 L65,40 L80,90 H20 L35,40 Z" fill="#c2634b" />
+              </svg>
+            </div>
+            <h1>Project Kabir</h1>
+          </div>
+          <h2>Admin Login</h2>
+          <p>Sign in to manage Agra's cultural heritage</p>
+        </div>
+
+        <form id="loginForm" class="auth-form">
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 4H3l9 7 9-7z"/>
+                <path d="M3 4v16h18V4"/>
+              </svg>
+              <input 
+                type="email" 
+                id="email" 
+                name="email" 
+                required 
+                autocomplete="email"
+                placeholder="Enter your email"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <circle cx="12" cy="16" r="1"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <input 
+                type="password" 
+                id="password" 
+                name="password" 
+                required 
+                autocomplete="current-password"
+                placeholder="Enter your password"
+              />
+              <button type="button" class="password-toggle" id="passwordToggle">
+                <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div id="error-message" class="error hidden"></div>
+          
+          <button type="submit" id="loginBtn" class="auth-btn">
+            <span class="btn-text">Sign In</span>
+            <span class="btn-loading hidden">
+              <svg class="spinner" width="20" height="20" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="32" stroke-dashoffset="32">
+                  <animate attributeName="stroke-dasharray" dur="2s" values="0 64;32 32;0 64" repeatCount="indefinite"/>
+                  <animate attributeName="stroke-dashoffset" dur="2s" values="0;-32;-64" repeatCount="indefinite"/>
+                </circle>
+              </svg>
+              Signing In...
+            </span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Poppins', sans-serif;
+        background: linear-gradient(135deg, #f5e6c7 0%, #e8d5b3 100%);
+        min-height: 100vh;
+      }
+
+      .auth-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #fff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+      }
+
+      .auth-loader.hidden {
+        opacity: 0;
+        visibility: hidden;
+      }
+
+      .loader-content {
+        text-align: center;
+      }
+
+      .loader-path {
+        fill: none;
+        stroke: rgba(194, 99, 75, 0.2);
+        stroke-width: 5;
+      }
+
+      .loader-monument {
+        fill: #c2634b;
+        transform-origin: center;
+        animation: monument-pulse 1.5s ease-in-out infinite alternate;
+      }
+
+      .loader-text {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #c2634b;
+        margin-top: 1rem;
+        opacity: 0;
+        animation: fade-in 1s ease-out 0.5s forwards;
+      }
+
+      @keyframes monument-pulse {
+        0% { transform: scale(0.95); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+
+      @keyframes fade-in {
+        0% { opacity: 0; }
+        100% { opacity: 1; }
+      }
+
+      .auth-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+      }
+
+      .auth-form-wrapper {
+        background: white;
+        border-radius: 24px;
+        padding: 3rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        max-width: 480px;
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .auth-form-wrapper::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #c2634b, #d4776b, #c2634b);
+        border-radius: 24px 24px 0 0;
+      }
+
+      .auth-header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+      }
+
+      .logo-section {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .logo-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .logo-section h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #c2634b;
+        margin: 0;
+      }
+
+      .auth-header h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #212529;
+        margin: 0 0 0.5rem 0;
+      }
+
+      .auth-header p {
+        color: #6c757d;
+        font-size: 1rem;
+        margin: 0;
+      }
+
+      .auth-form {
+        margin-bottom: 2rem;
+      }
+
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #495057;
+        font-size: 0.95rem;
+      }
+
+      .input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+
+      .input-icon {
+        position: absolute;
+        left: 1rem;
+        color: #6c757d;
+        z-index: 2;
+        pointer-events: none;
+      }
+
+      .form-group input {
+        width: 100%;
+        padding: 1rem 1rem 1rem 3rem;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: #f8f9fa;
+      }
+
+      .form-group input:focus {
+        outline: none;
+        border-color: #c2634b;
+        background: white;
+        box-shadow: 0 0 0 3px rgba(194, 99, 75, 0.1);
+      }
+
+      .form-group input::placeholder {
+        color: #adb5bd;
+      }
+
+      .password-toggle {
+        position: absolute;
+        right: 1rem;
+        background: none;
+        border: none;
+        color: #6c757d;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+        transition: color 0.2s ease;
+      }
+
+      .password-toggle:hover {
+        color: #c2634b;
+      }
+
+      .auth-btn {
+        width: 100%;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, #c2634b, #d4776b);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .auth-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s ease;
+      }
+
+      .auth-btn:hover::before {
+        left: 100%;
+      }
+
+      .auth-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(194, 99, 75, 0.4);
+      }
+
+      .auth-btn:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .btn-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+      }
+
+      .spinner {
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        border: 1px solid #f5c6cb;
+        font-size: 0.95rem;
+        animation: shake 0.5s ease-in-out;
+      }
+
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      @media (max-width: 576px) {
+        .auth-form-wrapper {
+          padding: 2rem 1.5rem;
+          margin: 1rem;
+          border-radius: 16px;
+        }
+
+        .auth-header h2 {
+          font-size: 1.75rem;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .auth-loader, .loader-monument, .loader-text, 
+        .auth-btn::before, .spinner, .error {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </body>
+</html>
