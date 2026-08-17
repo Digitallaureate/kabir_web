@@ -1,14 +1,19 @@
 ---
 import AdminLayout from '../../../components/layout/AdminLayout.astro';
+import BlogPostsPanel from '../../../components/admin/BlogPostsPanel.astro';
+import BlogCategoriesPanel from '../../../components/admin/BlogCategoriesPanel.astro';
+import BlogRequestsPanel from '../../../components/admin/BlogRequestsPanel.astro';
 import { getFirestore, collection, query, orderBy, getDocs } from "firebase/firestore";
-import { app } from "../../../utils/firebase";  // Changed from utils/firebase to firebase
-import { doc, updateDoc, addDoc, serverTimestamp, Firestore } from 'firebase/firestore';
+import { app } from "../../../utils/firebase";
+import { getBlogRequests } from '../../../lib/traviz/client';
+import type { BlogRequest } from '../../../lib/traviz/types';
+
 export const prerender = false;
 
-// Initialize Firestore
+// This page owns data fetching only. Each tab's markup, styles and behaviour
+// live in its own component under components/admin/.
 const db = getFirestore(app);
 
-// Fetch blogs and categories
 const blogsQuery = query(collection(db, "blogs"), orderBy("publishDate", "desc"));
 const categoriesQuery = query(collection(db, "categories"), orderBy("name"));
 
@@ -17,7 +22,6 @@ const [blogsSnapshot, categoriesSnapshot] = await Promise.all([
   getDocs(categoriesQuery)
 ]);
 
-// Process blogs
 const blogs = blogsSnapshot.docs.map(doc => ({
   id: doc.id,
   title: doc.data().title || "Untitled",
@@ -30,7 +34,6 @@ const blogs = blogsSnapshot.docs.map(doc => ({
   publishDate: doc.data().publishDate?.toDate() || new Date()
 }));
 
-// Process categories
 const categories = categoriesSnapshot.docs.map(doc => ({
   id: doc.id,
   name: doc.data().name || "Uncategorized",
@@ -38,13 +41,27 @@ const categories = categoriesSnapshot.docs.map(doc => ({
   description: doc.data().description || ""
 }));
 
-// Status counter
-const statusCounts = {
-  all: blogs.length,
-  published: blogs.filter(blog => blog.status === 'published').length,
-  draft: blogs.filter(blog => blog.status === 'draft').length,
-  featured: blogs.filter(blog => blog.featured).length
-};
+// Post counts per category, computed once instead of filtering inside the loop.
+const postCountByCategory = blogs.reduce<Record<string, number>>((counts, blog) => {
+  if (blog.category) {
+    counts[blog.category] = (counts[blog.category] ?? 0) + 1;
+  }
+  return counts;
+}, {});
+
+// Blog requests raised in the Traviz app.
+// Failing to reach Traviz must not take the whole Blog Management page down.
+let blogRequests: BlogRequest[] = [];
+let requestsError: string | null = null;
+
+try {
+  blogRequests = await getBlogRequests();
+} catch (error) {
+  requestsError = error instanceof Error ? error.message : 'Could not reach the Traviz backend';
+  console.error('Failed to load blog requests', error);
+}
+
+const pendingRequestCount = blogRequests.filter(request => request.status === 'pending').length;
 ---
 
 <AdminLayout title="Blog Management" activePage="blog">
@@ -66,257 +83,39 @@ const statusCounts = {
         </a>
       </div>
     </div>
-    
+
     <!-- Blog Management Tabs -->
     <div class="admin-tabs">
       <button class="admin-tab active" data-tab="posts">Posts</button>
       <button class="admin-tab" data-tab="categories">Categories</button>
+      <button class="admin-tab" data-tab="requested_blogs">
+        Requested Blog
+        {pendingRequestCount > 0 && <span class="tab-badge">{pendingRequestCount}</span>}
+      </button>
     </div>
-    
-    <!-- Posts Tab -->
+
     <div class="tab-content active" id="posts-tab">
-      <div class="admin-card">
-        <div class="admin-card-header">
-          <div class="status-filter">
-            <button class="filter-btn active" data-filter="all">
-              All <span class="count">{statusCounts.all}</span>
-            </button>
-            <button class="filter-btn" data-filter="published">
-              Published <span class="count">{statusCounts.published}</span>
-            </button>
-            <button class="filter-btn" data-filter="draft">
-              Draft <span class="count">{statusCounts.draft}</span>
-            </button>
-            <button class="filter-btn" data-filter="featured">
-              Featured <span class="count">{statusCounts.featured}</span>
-            </button>
-          </div>
-          
-          <div class="search-filter">
-            <div class="search-box">
-              <input type="text" id="blog-search" placeholder="Search posts..." />
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-            </div>
-            <div class="filter-controls">
-              <select class="filter-dropdown" id="category-filter">
-                <option value="all">All Categories</option>
-                {categories.map((category) => (
-                  <option value={category.id}>{category.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-        
-        <div class="table-container">
-          <table class="admin-table" id="blogs-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Category</th>
-                <th>Author</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Featured</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {blogs.map((blog) => (
-                <tr class={blog.status === 'draft' ? 'inactive-row' : ''} data-status={blog.status} data-featured={blog.featured} data-category={blog.category}>
-                  <td>
-                    <div class="post-title-cell">
-                      <span class="post-title">{blog.title}</span>
-                      <span class="post-excerpt">{blog.excerpt?.substring(0, 100)}...</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span class="category-badge">
-                      {categories.find(c => c.id === blog.category)?.name || 'Uncategorized'}
-                    </span>
-                  </td>
-                  <td>{blog.author}</td>
-                  <td>{blog.publishDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                  <td>
-                    <span class={`status-badge ${blog.status === 'published' ? 'status-active' : 'status-inactive'}`}>
-                      {blog.status === 'published' ? 'Published' : 'Draft'}
-                    </span>
-                  </td>
-                  <td>
-                    <span class={`featured-indicator ${blog.featured ? 'is-featured' : ''}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                      </svg>
-                    </span>
-                  </td>
-                  <td>
-                    <div class="action-buttons">
-                      <a href={`/admin/blogs/${blog.id}/edit`} class="action-btn edit-btn" title="Edit">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                      </a>
-                      <a href={`/blogs/${blog.slug}`} target="_blank" class="action-btn view-btn" title="View">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                          <circle cx="12" cy="12" r="3"></circle>
-                        </svg>
-                      </a>
-                      <button class="action-btn delete-btn" title="Delete" data-id={blog.id} data-title={blog.title}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <polyline points="3 6 5 6 21 6"></polyline>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          
-          {blogs.length === 0 && (
-            <div class="empty-state">
-              <div class="empty-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
-                  <path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/>
-                </svg>
-              </div>
-              <h3>No blog posts yet</h3>
-              <p>Get started by creating your first blog post</p>
-              <a href="/admin/blogs/new" class="admin-button admin-button-primary">
-                Create New Post
-              </a>
-            </div>
-          )}
-        </div>
-        
-        {blogs.length > 0 && (
-          <div class="table-pagination">
-            <div class="pagination-info">Showing 1-{blogs.length} of {blogs.length} posts</div>
-          </div>
-        )}
-      </div>
+      <BlogPostsPanel blogs={blogs} categories={categories} />
     </div>
-    
-    <!-- Categories Tab -->
+
     <div class="tab-content" id="categories-tab">
-      <div class="admin-card">
-        <div class="admin-card-header">
-          <h3>Categories</h3>
-          <button class="admin-button admin-button-primary admin-button-sm" id="add-category-btn">Add Category</button>
-        </div>
-        
-        <div class="admin-card-body">
-          <div class="categories-grid" id="categories-grid">
-            {categories.map((category) => (
-              <div class="category-card" data-id={category.id}>
-                <div class="category-card-header">
-                  <h4>{category.name}</h4>
-                  <div class="category-actions">
-                    <button class="action-btn edit-btn edit-category-btn" title="Edit" data-id={category.id} data-name={category.name} data-slug={category.slug} data-description={category.description || ''}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                      </svg>
-                    </button>
-                    <button class="action-btn delete-btn delete-category-btn" title="Delete" data-id={category.id} data-name={category.name}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <div class="category-card-info">
-                  <p>{category.description || 'No description'}</p>
-                  <p>Posts: {blogs.filter(blog => blog.category === category.id).length}</p>
-                </div>
-              </div>
-            ))}
-            
-            {categories.length === 0 && (
-              <div class="empty-state">
-                <div class="empty-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>
-                  </svg>
-                </div>
-                <h3>No categories yet</h3>
-                <p>Create a category to organize your blog posts</p>
-                <button class="admin-button admin-button-primary" id="empty-add-category-btn">
-                  Add Category
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <BlogCategoriesPanel categories={categories} postCountByCategory={postCountByCategory} />
     </div>
-  </div>
 
-  <!-- Category Modal -->
-  <div id="category-modal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 id="category-modal-title">Add Category</h3>
-        <button class="modal-close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <form id="category-form">
-          <input type="hidden" id="category-id">
-          <div class="admin-form-group">
-            <label for="category-name" class="admin-form-label">Category Name</label>
-            <input type="text" id="category-name" class="admin-form-input" required>
-          </div>
-          <div class="admin-form-group">
-            <label for="category-slug" class="admin-form-label">Slug</label>
-            <input type="text" id="category-slug" class="admin-form-input" required>
-            <div class="form-helper">URL-friendly version of the name</div>
-          </div>
-          <div class="admin-form-group">
-            <label for="category-description" class="admin-form-label">Description</label>
-            <textarea id="category-description" class="admin-form-textarea"></textarea>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button class="admin-button admin-button-secondary" id="cancel-category">Cancel</button>
-        <button class="admin-button admin-button-primary" id="save-category">Save Category</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Delete Confirmation Modal -->
-  <div id="delete-modal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Delete Confirmation</h3>
-        <button class="modal-close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p id="delete-message">Are you sure you want to delete this item?</p>
-        <input type="hidden" id="delete-id">
-        <input type="hidden" id="delete-type">
-      </div>
-      <div class="modal-footer">
-        <button class="admin-button admin-button-secondary" id="cancel-delete">Cancel</button>
-        <button class="admin-button admin-button-danger" id="confirm-delete">Delete</button>
-      </div>
+    <div class="tab-content" id="requested_blogs-tab">
+      <BlogRequestsPanel requests={blogRequests} loadError={requestsError} />
     </div>
   </div>
 </AdminLayout>
 
 <style>
+  /* Tabs, cards, tables and modals all come from
+     components/layout/styles/_admin.css. Only page chrome is styled here. */
+
   .admin-container {
     padding: 2rem;
   }
-  
+
   .admin-header {
     display: flex;
     justify-content: space-between;
@@ -325,1009 +124,66 @@ const statusCounts = {
     flex-wrap: wrap;
     gap: 1rem;
   }
-  
+
   .admin-header h1 {
     margin: 0;
-    font-size: 2rem;
+    font-size: 1.75rem;
     font-weight: 600;
     color: #333;
   }
-  
+
   .header-subtitle {
-    color: var(--text-light);
     margin: 0.5rem 0 0;
-    font-size: 1rem;
     color: #666;
-  }
-  
-  .admin-tabs {
-    display: flex;
-    border-bottom: 1px solid #e1e1e1;
-    margin-bottom: 1.5rem;
-  }
-  
-  .admin-tab {
-    padding: 0.75rem 1.5rem;
-    border: none;
-    background: none;
-    font-size: 1rem;
-    font-weight: 500;
-    color: #666;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-  }
-  
-  .admin-tab:hover {
-    color: #c2634b;
-  }
-  
-  .admin-tab.active {
-    color: #c2634b;
-  }
-  
-  .admin-tab.active::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background-color: #c2634b;
-  }
-  
-  .tab-content {
-    display: none;
-  }
-  
-  .tab-content.active {
-    display: block;
-  }
-  
-  .admin-card {
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-  }
-  
-  .admin-card-header {
-    padding: 1.5rem;
-    border-bottom: 1px solid #f0f0f0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-  
-  .admin-card-header h3 {
-    margin: 0;
-    font-size: 1.25rem;
-    color: #333;
-  }
-  
-  .admin-card-body {
-    padding: 1.5rem;
-  }
-  
-  .status-filter {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-  }
-  
-  .filter-btn {
-    padding: 0.5rem 1rem;
-    border: 1px solid #e1e1e1;
-    background-color: white;
-    border-radius: 4px;
-    font-size: 0.9375rem;
-    color: #666;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  
-  .filter-btn .count {
-    display: inline-block;
-    background-color: #f0f0f0;
-    padding: 0.125rem 0.5rem;
-    border-radius: 50px;
-    font-size: 0.75rem;
-    margin-left: 0.5rem;
-    color: #666;
-  }
-  
-  .filter-btn:hover {
-    border-color: #c2634b;
-    color: #c2634b;
-  }
-  
-  .filter-btn.active {
-    background-color: #c2634b;
-    color: white;
-    border-color: #c2634b;
-  }
-  
-  .filter-btn.active .count {
-    background-color: rgba(255, 255, 255, 0.2);
-    color: white;
-  }
-  
-  .search-filter {
-    display: flex;
-    gap: 1rem;
-    width: 100%;
-    flex-wrap: wrap;
-  }
-  
-  .search-box {
-    position: relative;
-    flex: 1;
-    min-width: 200px;
-  }
-  
-  .search-box input {
-    width: 100%;
-    padding: 0.75rem 1rem 0.75rem 2.5rem;
-    border: 1px solid #e1e1e1;
-    border-radius: 4px;
     font-size: 0.95rem;
   }
-  
-  .search-box svg {
-    position: absolute;
-    left: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #999;
-  }
-  
-  .filter-controls {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-  
-  .filter-dropdown {
-    padding: 0.75rem 1rem;
-    border: 1px solid #e1e1e1;
-    border-radius: 4px;
-    background-color: white;
-    font-size: 0.95rem;
-    min-width: 150px;
-    color: #333;
-  }
-  
-  .table-container {
-    overflow-x: auto;
-  }
-  
-  .admin-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  
-  .admin-table th,
-  .admin-table td {
-    padding: 1rem;
-    text-align: left;
-    border-bottom: 1px solid #f0f0f0;
-  }
-  
-  .admin-table th {
-    font-weight: 600;
-    color: #333;
-    background-color: #f9f9f9;
-  }
-  
-  .admin-table tbody tr:hover {
-    background-color: rgba(194, 99, 75, 0.05);
-  }
-  
-  .post-title-cell {
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .post-title {
-    font-weight: 500;
-    color: #333;
-    margin-bottom: 0.25rem;
-  }
-  
-  .post-excerpt {
-    font-size: 0.85rem;
-    color: #666;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  
-  .category-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    background-color: rgba(61, 90, 128, 0.1);
-    color: #3d5a80;
-    border-radius: 4px;
-    font-size: 0.8125rem;
-    font-weight: 500;
-  }
-  
-  .status-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.25rem 0.75rem;
-    border-radius: 50px;
-    font-size: 0.8125rem;
-    font-weight: 500;
-  }
-  
-  .status-active {
-    background-color: rgba(40, 167, 69, 0.1);
-    color: #28a745;
-  }
-  
-  .status-inactive {
-    background-color: rgba(108, 117, 125, 0.1);
-    color: #6c757d;
-  }
-  
-  .featured-indicator {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ddd;
-  }
-  
-  .featured-indicator.is-featured {
-    color: #ffc107;
-  }
-  
-  .action-buttons {
-    display: flex;
-    gap: 0.5rem;
-  }
-  
-  .action-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background-color: transparent;
-  }
-  
-  .edit-btn {
-    color: #007bff;
-  }
-  
-  .edit-btn:hover {
-    background-color: rgba(0, 123, 255, 0.1);
-  }
-  
-  .view-btn {
-    color: #6c757d;
-  }
-  
-  .view-btn:hover {
-    background-color: rgba(108, 117, 125, 0.1);
-  }
-  
-  .delete-btn {
-    color: #dc3545;
-  }
-  
-  .delete-btn:hover {
-    background-color: rgba(220, 53, 69, 0.1);
-  }
-  
-  .inactive-row {
-    background-color: #f9f9f9;
-    opacity: 0.75;
-  }
-  
-  .table-pagination {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    border-top: 1px solid #f0f0f0;
-  }
-  
-  .pagination-info {
-    font-size: 0.9rem;
-    color: #666;
-  }
-  
-  .categories-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 1.5rem;
-  }
-  
-  .category-card {
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 1.25rem;
-    border: 1px solid #e1e1e1;
-    transition: all 0.2s ease;
-  }
-  
-  .category-card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    transform: translateY(-3px);
-  }
-  
-  .category-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-  }
-  
-  .category-card-header h4 {
-    margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: #333;
-  }
-  
-  .category-actions {
-    display: flex;
-    gap: 0.5rem;
-  }
-  
-  .category-card-info p {
-    margin: 0 0 0.5rem;
-    font-size: 0.875rem;
-    color: #666;
-  }
-  
-  /* Modal styles */
-  .modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .modal.active {
-    display: flex;
-  }
-  
-  .modal-content {
-    background-color: white;
-    border-radius: 8px;
-    width: 100%;
-    max-width: 500px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    animation: modalSlideIn 0.3s ease;
-  }
-  
-  @keyframes modalSlideIn {
-    from {
-      transform: translateY(-50px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  
-  .modal-header {
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid #e1e1e1;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .modal-header h3 {
-    margin: 0;
-    font-size: 1.25rem;
-    color: #333;
-  }
-  
-  .modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: #666;
-    line-height: 1;
-  }
-  
-  .modal-body {
-    padding: 1.5rem;
-  }
-  
-  .modal-footer {
-    padding: 1rem 1.5rem;
-    border-top: 1px solid #e1e1e1;
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-  }
-  
-  .admin-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.75rem 1.5rem;
-    border-radius: 4px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: none;
-    text-decoration: none;
-    font-size: 1rem;
-  }
-  
-  .admin-button-primary {
-    background-color: #c2634b;
-    color: white;
-  }
-  
-  .admin-button-primary:hover {
-    background-color: #ad5541;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(194, 99, 75, 0.2);
-  }
-  
-  .admin-button-secondary {
-    background-color: #f0f0f0;
-    color: #333;
-  }
-  
-  .admin-button-secondary:hover {
-    background-color: #e0e0e0;
-    transform: translateY(-2px);
-  }
-  
-  .admin-button-danger {
-    background-color: #dc3545;
-    color: white;
-  }
-  
-  .admin-button-danger:hover {
-    background-color: #bd2130;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
-  }
-  
-  .admin-button-sm {
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-  }
-  
-  .admin-button-icon {
-    margin-right: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  /* Form styles */
-  .admin-form-group {
-    margin-bottom: 1.5rem;
-  }
-  
-  .admin-form-label {
-    display: block;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    color: #333;
-  }
-  
-  .admin-form-input,
-  .admin-form-textarea,
-  .admin-form-select {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border: 1px solid #e1e1e1;
-    border-radius: 4px;
-    font-family: inherit;
-    font-size: 1rem;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    color: #333;
-  }
-  
-  .admin-form-input:focus,
-  .admin-form-textarea:focus,
-  .admin-form-select:focus {
-    outline: none;
-    border-color: #c2634b;
-    box-shadow: 0 0 0 3px rgba(194, 99, 75, 0.15);
-  }
-  
-  .admin-form-textarea {
-    min-height: 120px;
-    resize: vertical;
-  }
-  
-  .form-helper {
-    margin-top: 0.5rem;
-    font-size: 0.875rem;
-    color: #666;
-  }
-  
-  /* Empty state */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 3rem 2rem;
-    text-align: center;
-  }
-  
-  .empty-icon {
-    margin-bottom: 1.5rem;
-    color: #ddd;
-  }
-  
-  .empty-state h3 {
-    margin: 0 0 0.75rem;
-    font-size: 1.25rem;
-    color: #333;
-  }
-  
-  .empty-state p {
-    margin: 0 0 1.5rem;
-    color: #666;
-    max-width: 300px;
-  }
-  
-  /* Responsive styles */
+
   @media (max-width: 992px) {
     .admin-container {
       padding: 1.5rem;
     }
   }
-  
+
   @media (max-width: 768px) {
     .admin-header {
       flex-direction: column;
       align-items: flex-start;
     }
-    
-    .search-filter {
-      flex-direction: column;
-    }
-    
-    .search-box {
-      width: 100%;
-    }
-    
-    .filter-controls {
-      width: 100%;
-    }
-    
-    .filter-dropdown {
-      flex-grow: 1;
-    }
-    
-    .status-filter {
-      width: 100%;
-      overflow-x: auto;
-      padding-bottom: 0.5rem;
-      margin-bottom: 1rem;
-      flex-wrap: nowrap;
-    }
-    
-    .categories-grid {
-      grid-template-columns: 1fr;
-    }
-    
-    .modal-content {
-      max-width: 90%;
-    }
-    
-    .admin-button {
-      width: 100%;
-    }
-  }
-  
-  @media (max-width: 576px) {
-    .admin-button {
-      width: 100%;
-    }
   }
 </style>
 
 <script>
-  import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
-  import { app } from "../../../utils/firebase";  // Changed from utils/firebase to firebase
-  
-  // Initialize Firestore
-  const db = getFirestore(app);
-  
   document.addEventListener('DOMContentLoaded', function() {
-    // Tab switching
     const tabs = document.querySelectorAll('.admin-tab');
     const tabContents = document.querySelectorAll('.tab-content');
-    
+
+    function activateTab(tabId: string | null) {
+      const tabContentElement = tabId ? document.getElementById(`${tabId}-tab`) : null;
+      if (!tabContentElement) return;
+
+      tabs.forEach(t => t.classList.remove('active'));
+      tabContents.forEach(c => c.classList.remove('active'));
+
+      document.querySelector(`.admin-tab[data-tab="${tabId}"]`)?.classList.add('active');
+      tabContentElement.classList.add('active');
+    }
+
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
         const tabId = tab.getAttribute('data-tab');
-        
-        tabs.forEach(t => t.classList.remove('active'));
-        tabContents.forEach(c => c.classList.remove('active'));
-        
-        tab.classList.add('active');
-        const tabContentElement = document.getElementById(`${tabId}-tab`);
-        if (tabContentElement) {
-          tabContentElement.classList.add('active');
-        }
+        activateTab(tabId);
+
+        // Keep the URL in step so a reload stays on the same tab.
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tabId ?? 'posts');
+        window.history.replaceState({}, '', url);
       });
     });
-    
-      // Status filter for blogs
-      const filterButtons = document.querySelectorAll('.filter-btn');
-      const blogRows = document.querySelectorAll('#blogs-table tbody tr');
 
-      filterButtons.forEach(button => {
-        button.addEventListener('click', () => {
-          const filter = button.getAttribute('data-filter');
-
-          filterButtons.forEach(btn => btn.classList.remove('active'));
-          button.classList.add('active');
-
-          blogRows.forEach(row => {
-            const htmlRow = row as HTMLElement;
-            if (filter === 'all') {
-              htmlRow.style.display = '';
-            } else if (filter === 'featured') {
-              htmlRow.style.display = htmlRow.getAttribute('data-featured') === 'true' ? '' : 'none';
-            } else {
-              htmlRow.style.display = htmlRow.getAttribute('data-status') === filter ? '' : 'none';
-            }
-          });
-        });
-      });
-
-      // Category filter
-      const categoryFilter = document.getElementById('category-filter') as HTMLSelectElement | HTMLInputElement | null;
-
-  if (categoryFilter) {
-    categoryFilter.addEventListener('change', () => {
-      let selectedCategory: string;
-      if (categoryFilter instanceof HTMLSelectElement) {
-        selectedCategory = categoryFilter.value;
-      } else if (categoryFilter instanceof HTMLInputElement) {
-        selectedCategory = categoryFilter.value;
-      } else {
-        // Handle the case where categoryFilter is not a recognized input type
-        console.error("Category filter element is not a recognized input type.");
-        return;
-      }
-
-      const blogRows = document.querySelectorAll('[data-category]'); // Assuming your blog rows have a 'data-category' attribute
-
-      blogRows.forEach(row => {
-        const htmlRow = row as HTMLElement;
-        if (selectedCategory === 'all') {
-          htmlRow.style.display = '';
-        } else {
-          htmlRow.style.display = htmlRow.getAttribute('data-category') === selectedCategory ? '' : 'none';
-      }
-        });
-    });
-  } else {
-  console.error("Category filter element with ID 'category-filter' not found.");
-  }
-    
-    // Search functionality
-    const searchInput = document.getElementById('blog-search') as HTMLInputElement | null;
-
-      if (searchInput) {
-        searchInput.addEventListener('input', () => {
-          const searchTerm = searchInput.value.toLowerCase();
-          const blogRows = document.querySelectorAll('[data-blog-row]'); // Adjust selector as needed
-
-        blogRows.forEach(row => {
-          const titleElement = row.querySelector('.post-title') as HTMLElement | null;
-          const excerptElement = row.querySelector('.post-excerpt') as HTMLElement | null;
-          const htmlRow = row as HTMLElement;
-
-          if (titleElement && excerptElement) {
-            const title = titleElement.textContent?.toLowerCase() || '';
-            const excerpt = excerptElement.textContent?.toLowerCase() || '';
-            if (title.includes(searchTerm) || excerpt.includes(searchTerm)) {
-              htmlRow.style.display = '';
-            } else {
-              htmlRow.style.display = 'none';
-            }
-          }
-        });
-      });
+    // Deep link support: /admin/blogs?tab=requested_blogs
+    const requestedTab = new URLSearchParams(window.location.search).get('tab');
+    if (requestedTab) {
+      activateTab(requestedTab);
     }
-    
-    // Category modal
-    const categoryModal = document.getElementById('category-modal');
-    const addCategoryBtn = document.getElementById('add-category-btn');
-    const emptyAddCategoryBtn = document.getElementById('empty-add-category-btn');
-    const cancelCategoryBtn = document.getElementById('cancel-category');
-    const saveCategoryBtn = document.getElementById('save-category');
-    const categoryForm = document.getElementById('category-form') as HTMLFormElement;
-    const modalCloseButtons = document.querySelectorAll('.modal-close');
-    
-    // Auto-generate slug from name
-    const categoryName = document.getElementById('category-name') as HTMLInputElement;
-    const categorySlug = document.getElementById('category-slug') as HTMLInputElement;
-    
-    if (categoryName && categorySlug) {
-      categoryName.addEventListener('input', () => {
-        categorySlug.value = categoryName.value
-          .toLowerCase()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/\s+/g, '-');
-      });
-    }
-    
-    // Open category modal for adding
-    const openCategoryModal = () => {
-      const categoryModalTitle = document.getElementById('category-modal-title');
-      const categoryId = document.getElementById('category-id') as HTMLInputElement;
-      
-      if (categoryModalTitle) {
-        categoryModalTitle.textContent = 'Add Category';
-      }
-      
-      if (categoryId) {
-        categoryId.value = '';
-      }
-      
-      if (categoryForm) {
-        categoryForm.reset();
-      }
-      
-      if (categoryModal) {
-        categoryModal.classList.add('active');
-      }
-    };
-    
-    if (addCategoryBtn) {
-      addCategoryBtn.addEventListener('click', openCategoryModal);
-    }
-    
-    if (emptyAddCategoryBtn) {
-      emptyAddCategoryBtn.addEventListener('click', openCategoryModal);
-    }
-    
-    // Edit category
-    const editCategoryBtns = document.querySelectorAll('.edit-category-btn');
-    editCategoryBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id') || '';
-        const name = btn.getAttribute('data-name') || '';
-        const slug = btn.getAttribute('data-slug') || '';
-        const description = btn.getAttribute('data-description') || '';
-        
-        const categoryModalTitle = document.getElementById('category-modal-title');
-        const categoryId = document.getElementById('category-id') as HTMLInputElement;
-        const categoryNameInput = document.getElementById('category-name') as HTMLInputElement;
-        const categorySlugInput = document.getElementById('category-slug') as HTMLInputElement;
-        const categoryDescriptionInput = document.getElementById('category-description') as HTMLTextAreaElement;
-        
-        if (categoryModalTitle) {
-          categoryModalTitle.textContent = 'Edit Category';
-        }
-        
-        if (categoryId) {
-          categoryId.value = id;
-        }
-        
-        if (categoryNameInput) {
-          categoryNameInput.value = name;
-        }
-        
-        if (categorySlugInput) {
-          categorySlugInput.value = slug;
-        }
-        
-        if (categoryDescriptionInput) {
-          categoryDescriptionInput.value = description;
-        }
-        
-        if (categoryModal) {
-          categoryModal.classList.add('active');
-        }
-      });
-    });
-    
-    // Save category
-    if (saveCategoryBtn) {
-      saveCategoryBtn.addEventListener('click', async () => {
-        const categoryIdInput = document.getElementById('category-id') as HTMLInputElement;
-        const categoryNameInput = document.getElementById('category-name') as HTMLInputElement;
-        const categorySlugInput = document.getElementById('category-slug') as HTMLInputElement;
-        const categoryDescriptionInput = document.getElementById('category-description') as HTMLTextAreaElement;
-        
-        const id = categoryIdInput ? categoryIdInput.value : '';
-        const name = categoryNameInput ? categoryNameInput.value : '';
-        const slug = categorySlugInput ? categorySlugInput.value : '';
-        const description = categoryDescriptionInput ? categoryDescriptionInput.value : '';
-        
-        if (!name || !slug) {
-          alert('Name and slug are required');
-          return;
-        }
-        
-        try {
-          const categoryData: {
-            name: string;
-            slug: string;
-            description: string;
-            updatedAt: any;
-            createdAt?: any;
-          } = {
-            name,
-            slug,
-            description,
-            updatedAt: serverTimestamp()
-          };
-          
-          if (id) {
-            // Update existing category
-            await updateDoc(doc(db, "categories", id), categoryData);
-          } else {
-            // Add new category
-            categoryData.createdAt = serverTimestamp();
-            await addDoc(collection(db, "categories"), categoryData);
-          }
-          
-          if (categoryModal) {
-            categoryModal.classList.remove('active');
-          }
-          
-          // Reload the page to show updated data
-          window.location.reload();
-        } catch (error) {
-          console.error("Error saving category:", error);
-          alert("Error saving category");
-        }
-      });
-    }
-    
-    // Delete category
-    const deleteCategoryBtns = document.querySelectorAll('.delete-category-btn');
-    const deleteModal = document.getElementById('delete-modal');
-    const deleteMessage = document.getElementById('delete-message');
-    const deleteId = document.getElementById('delete-id') as HTMLInputElement;
-    const deleteType = document.getElementById('delete-type') as HTMLInputElement;
-    const confirmDeleteBtn = document.getElementById('confirm-delete');
-    const cancelDeleteBtn = document.getElementById('cancel-delete');
-    
-    deleteCategoryBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id') || '';
-        const name = btn.getAttribute('data-name') || '';
-        
-        if (deleteMessage) {
-          deleteMessage.textContent = `Are you sure you want to delete the category "${name}"?`;
-        }
-        
-        if (deleteId) {
-          deleteId.value = id;
-        }
-        
-        if (deleteType) {
-          deleteType.value = 'category';
-        }
-        
-        if (deleteModal) {
-          deleteModal.classList.add('active');
-        }
-      });
-    });
-    
-    // Delete blog post
-    const deleteBlogBtns = document.querySelectorAll('.delete-btn:not(.delete-category-btn)');
-    
-    deleteBlogBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id') || '';
-        const title = btn.getAttribute('data-title') || '';
-        
-        if (deleteMessage) {
-          deleteMessage.textContent = `Are you sure you want to delete the blog post "${title}"?`;
-        }
-        
-        if (deleteId) {
-          deleteId.value = id;
-        }
-        
-        if (deleteType) {
-          deleteType.value = 'blog';
-        }
-        
-        if (deleteModal) {
-          deleteModal.classList.add('active');
-        }
-      });
-    });
-    
-    // Confirm delete
-    if (confirmDeleteBtn) {
-      confirmDeleteBtn.addEventListener('click', async () => {
-        const id = deleteId ? deleteId.value : '';
-        const type = deleteType ? deleteType.value : '';
-        
-        try {
-          if (type === 'category') {
-            await deleteDoc(doc(db, "categories", id));
-          } else if (type === 'blog') {
-            await deleteDoc(doc(db, "blogs", id));
-          }
-          
-          if (deleteModal) {
-            deleteModal.classList.remove('active');
-          }
-          
-          // Reload the page to show updated data
-          window.location.reload();
-        } catch (error) {
-          console.error("Error deleting item:", error);
-          alert("Error deleting item");
-        }
-      });
-    }
-    
-    // Close modals
-    if (cancelCategoryBtn) {
-      cancelCategoryBtn.addEventListener('click', () => {
-        if (categoryModal) {
-          categoryModal.classList.remove('active');
-        }
-      });
-    }
-    
-    if (cancelDeleteBtn) {
-      cancelDeleteBtn.addEventListener('click', () => {
-        if (deleteModal) {
-          deleteModal.classList.remove('active');
-        }
-      });
-    }
-    
-    modalCloseButtons.forEach(closeBtn => {
-      closeBtn.addEventListener('click', () => {
-        if (categoryModal) {
-          categoryModal.classList.remove('active');
-        }
-        if (deleteModal) {
-          deleteModal.classList.remove('active');
-        }
-      });
-    });
-    
-    // Close modal when clicking outside
-    window.addEventListener('click', (e) => {
-      if (e.target === categoryModal) {
-        if (categoryModal) {
-          categoryModal.classList.remove('active');
-        }
-      }
-      if (e.target === deleteModal) {
-        if (deleteModal) {
-          deleteModal.classList.remove('active');
-        }
-      }
-    });
   });
 </script>

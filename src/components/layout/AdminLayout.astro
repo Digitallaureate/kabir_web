@@ -9,6 +9,8 @@ interface Props {
 
 const { title, activePage = 'dashboard' } = Astro.props;
 
+// Everything blog-related lives under Blog Management, which has its own
+// Posts / Categories / Requested Blog tabs.
 const sidebarItems = [
   { name: 'Dashboard', icon: 'grid', href: '/admin', id: 'dashboard' },
   { name: 'Blog Management', icon: 'file-text', href: '/admin/blogs', id: 'blog' },

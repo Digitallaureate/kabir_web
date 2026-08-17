@@ -1,0 +1,337 @@
+---
+// Blog categories grid, rendered as the "Categories" tab on /admin/blogs.
+//
+// Astro scopes <style> to this component but NOT <script>, so every DOM query
+// below is scoped to #blog-categories-panel and its JS hooks are namespaced.
+
+interface CategorySummary {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+}
+
+interface Props {
+  categories: CategorySummary[];
+  /** Used only for the per-category post count. */
+  postCountByCategory: Record<string, number>;
+}
+
+const { categories, postCountByCategory } = Astro.props;
+---
+
+<div class="blog-categories-panel" id="blog-categories-panel">
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <h3>Categories</h3>
+      <button class="admin-button admin-button-primary admin-button-sm" id="add-category-btn">Add Category</button>
+    </div>
+
+    <div class="admin-card-body">
+      <div class="categories-grid" id="categories-grid">
+        {categories.map((category) => (
+          <div class="category-card" data-id={category.id}>
+            <div class="category-card-header">
+              <h4>{category.name}</h4>
+              <div class="category-actions">
+                <button class="action-btn edit-btn edit-category-btn" title="Edit" data-id={category.id} data-name={category.name} data-slug={category.slug} data-description={category.description || ''}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                </button>
+                <button class="action-btn delete-btn delete-category-btn" title="Delete" data-id={category.id} data-name={category.name}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="category-card-info">
+              <p>{category.description || 'No description'}</p>
+              <p>Posts: {postCountByCategory[category.id] ?? 0}</p>
+            </div>
+          </div>
+        ))}
+
+        {categories.length === 0 && (
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>
+              </svg>
+            </div>
+            <h3>No categories yet</h3>
+            <p>Create a category to organize your blog posts</p>
+            <button class="admin-button admin-button-primary" id="empty-add-category-btn">
+              Add Category
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+
+  <!-- Add / edit category -->
+  <div id="category-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="category-modal-title">Add Category</h3>
+        <button class="modal-close" data-close-category-modal>&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="category-form">
+          <input type="hidden" id="category-id">
+          <div class="admin-form-group">
+            <label for="category-name" class="admin-form-label">Category Name</label>
+            <input type="text" id="category-name" class="admin-form-input" required>
+          </div>
+          <div class="admin-form-group">
+            <label for="category-slug" class="admin-form-label">Slug</label>
+            <input type="text" id="category-slug" class="admin-form-input" required>
+            <div class="form-helper">URL-friendly version of the name</div>
+          </div>
+          <div class="admin-form-group">
+            <label for="category-description" class="admin-form-label">Description</label>
+            <textarea id="category-description" class="admin-form-textarea"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="admin-button admin-button-secondary" data-close-category-modal>Cancel</button>
+        <button class="admin-button admin-button-primary" id="save-category">Save Category</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete confirmation -->
+  <div id="category-delete-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Delete Confirmation</h3>
+        <button class="modal-close" data-close-category-delete>&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="category-delete-message">Are you sure you want to delete this item?</p>
+        <input type="hidden" id="category-delete-id">
+      </div>
+      <div class="modal-footer">
+        <button class="admin-button admin-button-secondary" data-close-category-delete>Cancel</button>
+        <button class="admin-button admin-button-danger" id="confirm-category-delete">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Cards, modals, buttons, forms and the empty state come from
+     components/layout/styles/_admin.css. Only category styling is here. */
+
+  .categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .category-card {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 1.25rem;
+    border: 1px solid #e1e1e1;
+    transition: all 0.2s ease;
+  }
+
+  .category-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-3px);
+  }
+
+  .category-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .category-card-header h4 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .category-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .category-card-info p {
+    margin: 0 0 0.5rem;
+    font-size: 0.875rem;
+    color: #666;
+  }
+
+  @media (max-width: 768px) {
+    .categories-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+  import { app } from "../../utils/firebase";
+
+  const db = getFirestore(app);
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const panel = document.getElementById('blog-categories-panel');
+    if (!panel) return;
+
+    const categoryModal = panel.querySelector('#category-modal');
+    const categoryForm = panel.querySelector('#category-form') as HTMLFormElement | null;
+    const titleLabel = panel.querySelector('#category-modal-title');
+    const idField = panel.querySelector('#category-id') as HTMLInputElement | null;
+    const nameField = panel.querySelector('#category-name') as HTMLInputElement | null;
+    const slugField = panel.querySelector('#category-slug') as HTMLInputElement | null;
+    const descriptionField = panel.querySelector('#category-description') as HTMLTextAreaElement | null;
+
+    // Auto-generate the slug from the name until the user edits the slug directly.
+    let autoSlug = true;
+
+    slugField?.addEventListener('input', () => {
+      autoSlug = false;
+    });
+
+    nameField?.addEventListener('input', () => {
+      if (!autoSlug || !slugField) return;
+      slugField.value = nameField.value
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    });
+
+    const openCategoryModal = (
+      values: { id?: string; name?: string; slug?: string; description?: string } = {}
+    ) => {
+      const isEdit = Boolean(values.id);
+
+      if (titleLabel) titleLabel.textContent = isEdit ? 'Edit Category' : 'Add Category';
+      categoryForm?.reset();
+
+      if (idField) idField.value = values.id ?? '';
+      if (nameField) nameField.value = values.name ?? '';
+      if (slugField) slugField.value = values.slug ?? '';
+      if (descriptionField) descriptionField.value = values.description ?? '';
+
+      // An existing slug must not be rewritten by later name edits.
+      autoSlug = !isEdit;
+
+      categoryModal?.classList.add('active');
+    };
+
+    panel.querySelector('#add-category-btn')?.addEventListener('click', () => openCategoryModal());
+    panel.querySelector('#empty-add-category-btn')?.addEventListener('click', () => openCategoryModal());
+
+    panel.querySelectorAll<HTMLButtonElement>('.edit-category-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        openCategoryModal({
+          id: button.dataset.id,
+          name: button.dataset.name,
+          slug: button.dataset.slug,
+          description: button.dataset.description,
+        });
+      });
+    });
+
+    panel.querySelectorAll('[data-close-category-modal]').forEach((button) => {
+      button.addEventListener('click', () => categoryModal?.classList.remove('active'));
+    });
+
+    categoryModal?.addEventListener('click', (event) => {
+      if (event.target === categoryModal) categoryModal.classList.remove('active');
+    });
+
+    // Save
+    const saveButton = panel.querySelector('#save-category') as HTMLButtonElement | null;
+
+    saveButton?.addEventListener('click', async () => {
+      const id = idField?.value ?? '';
+      const name = nameField?.value ?? '';
+      const slug = slugField?.value ?? '';
+      const description = descriptionField?.value ?? '';
+
+      if (!name || !slug) {
+        alert('Name and slug are required');
+        return;
+      }
+
+      saveButton.disabled = true;
+
+      try {
+        const categoryData: Record<string, unknown> = {
+          name,
+          slug,
+          description,
+          updatedAt: serverTimestamp(),
+        };
+
+        if (id) {
+          await updateDoc(doc(db, "categories", id), categoryData);
+        } else {
+          categoryData.createdAt = serverTimestamp();
+          await addDoc(collection(db, "categories"), categoryData);
+        }
+
+        categoryModal?.classList.remove('active');
+        window.location.reload();
+      } catch (error) {
+        console.error("Error saving category:", error);
+        alert("Error saving category");
+        saveButton.disabled = false;
+      }
+    });
+
+    // Delete
+    const deleteModal = panel.querySelector('#category-delete-modal');
+    const deleteMessage = panel.querySelector('#category-delete-message');
+    const deleteIdField = panel.querySelector('#category-delete-id') as HTMLInputElement | null;
+    const confirmDeleteButton = panel.querySelector('#confirm-category-delete') as HTMLButtonElement | null;
+
+    panel.querySelectorAll<HTMLButtonElement>('.delete-category-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        if (deleteMessage) {
+          deleteMessage.textContent = `Are you sure you want to delete the category "${button.dataset.name ?? ''}"?`;
+        }
+        if (deleteIdField) deleteIdField.value = button.dataset.id ?? '';
+        deleteModal?.classList.add('active');
+      });
+    });
+
+    panel.querySelectorAll('[data-close-category-delete]').forEach((button) => {
+      button.addEventListener('click', () => deleteModal?.classList.remove('active'));
+    });
+
+    deleteModal?.addEventListener('click', (event) => {
+      if (event.target === deleteModal) deleteModal.classList.remove('active');
+    });
+
+    confirmDeleteButton?.addEventListener('click', async () => {
+      const id = deleteIdField?.value;
+      if (!id) return;
+
+      confirmDeleteButton.disabled = true;
+
+      try {
+        await deleteDoc(doc(db, "categories", id));
+        window.location.reload();
+      } catch (error) {
+        console.error("Error deleting category:", error);
+        alert("Error deleting category");
+        confirmDeleteButton.disabled = false;
+      }
+    });
+  });
+</script>

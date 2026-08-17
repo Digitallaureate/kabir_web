@@ -346,6 +346,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
   }
   
   .admin-card-header h2 {
@@ -425,7 +427,331 @@
     background-color: rgba(255, 193, 7, 0.1);
     color: var(--warning-color);
   }
-  
+
+  .status-in_progress {
+    background-color: rgba(61, 90, 128, 0.1);
+    color: var(--secondary-color);
+  }
+
+  .status-published {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: var(--success-color);
+  }
+
+  .status-rejected {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+  }
+
+  /* Tabs — shared by admin list pages */
+  .admin-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+  }
+
+  .admin-tab {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    background: none;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    text-decoration: none;
+  }
+
+  .admin-tab:hover {
+    color: var(--primary-color);
+  }
+
+  .admin-tab.active {
+    color: var(--primary-color);
+  }
+
+  .admin-tab.active::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background-color: var(--primary-color);
+  }
+
+  .tab-badge {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: 50px;
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  /* Status pill filters — shared by admin list pages */
+  .status-filter {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 50px;
+    padding: 0.4rem 1rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--text-light);
+    transition: all 0.2s ease;
+  }
+
+  .filter-btn:hover {
+    background-color: var(--background-alt);
+  }
+
+  .filter-btn.active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+  }
+
+  .filter-btn .count {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0 0.4rem;
+    border-radius: 50px;
+    background-color: rgba(0, 0, 0, 0.08);
+    font-size: 0.75rem;
+  }
+
+  .filter-btn.active .count {
+    background-color: rgba(255, 255, 255, 0.25);
+  }
+
+  /* Search box — shared by admin list pages */
+  .search-filter {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .search-box {
+    position: relative;
+  }
+
+  .search-box input {
+    padding: 0.6rem 2.5rem 0.6rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.9375rem;
+    min-width: 260px;
+    font-family: inherit;
+  }
+
+  .search-box input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+  }
+
+  .search-box svg {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+    pointer-events: none;
+  }
+
+  /* Table wrapper and empty state — shared by admin list pages */
+  .table-container {
+    overflow-x: auto;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    text-align: center;
+  }
+
+  .empty-icon {
+    margin-bottom: 1.5rem;
+    color: #ddd;
+  }
+
+  .empty-state h3 {
+    margin: 0 0 0.5rem;
+    color: var(--text-color);
+  }
+
+  .empty-state p {
+    margin: 0 0 1.5rem;
+    color: var(--text-light);
+  }
+
+  /* Tab panes — shared by admin pages that use .admin-tabs */
+  .tab-content {
+    display: none;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+
+  /* Dropdown filters — shared by admin list pages */
+  .filter-controls {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-dropdown {
+    padding: 0.75rem 1rem;
+    border: 1px solid #e1e1e1;
+    border-radius: 4px;
+    background-color: white;
+    font-size: 0.95rem;
+    min-width: 150px;
+    color: #333;
+  }
+
+  .category-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background-color: rgba(61, 90, 128, 0.1);
+    color: #3d5a80;
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  .featured-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ddd;
+  }
+
+  .featured-indicator.is-featured {
+    color: #ffc107;
+  }
+
+  .table-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .pagination-info {
+    font-size: 0.9rem;
+    color: #666;
+  }
+
+  .form-helper {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: #666;
+  }
+
+  .admin-button-danger {
+    background-color: #dc3545;
+    color: white;
+  }
+
+  .admin-button-danger:hover {
+    background-color: #bd2130;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
+  }
+
+  /* Modals — shared by admin pages */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal.active {
+    display: flex;
+  }
+
+  .modal-content {
+    background-color: white;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    animation: modalSlideIn 0.3s ease;
+  }
+
+  @keyframes modalSlideIn {
+    from {
+      transform: translateY(-50px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .modal-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e1e1e1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #333;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+    line-height: 1;
+  }
+
+  .modal-body {
+    padding: 1.5rem;
+  }
+
+  .modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e1e1e1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+  }
+
+  @media (max-width: 768px) {
+    .modal-content {
+      width: 90%;
+    }
+  }
+
   /* Admin forms */
   .admin-form-group {
     margin-bottom: 1.5rem;
