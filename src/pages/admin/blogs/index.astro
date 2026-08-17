@@ -61,7 +61,10 @@ try {
   console.error('Failed to load blog requests', error);
 }
 
-const pendingRequestCount = blogRequests.filter(request => request.status === 'pending').length;
+// Requests still awaiting an admin, shown as the count on the tab.
+const pendingRequestCount = blogRequests.filter(
+  request => request.status === 'requested' || request.status === 'in_progress'
+).length;
 ---
 
 <AdminLayout title="Blog Management" activePage="blog">

@@ -1,21 +1,82 @@
-// Contract shared with the Traviz backend.
-// These types mirror the agreed API payloads exactly — when the real endpoints
-// go live, only src/lib/traviz/client.ts changes, not the pages that consume it.
+// Types for the EcoStory backend API (http://127.0.0.1:8000/api).
+//
+// BlogRequest mirrors the API response exactly — same field names, same casing,
+// same nullability — so what you read here is what the endpoint actually returns.
 
-export type BlogRequestStatus = 'pending' | 'in_progress' | 'published' | 'rejected';
-
-/** One row from GET /blog-requests */
+/**
+ * One item from GET /api/blog/requests.
+ * Matches the backend's BlogRequestItem schema field for field.
+ */
 export interface BlogRequest {
   id: string;
-  chatId: string;
-  userId: string;
-  /** Display name of the app user who asked for the blog. */
-  requestedByName: string;
-  /** Human-readable summary so the admin knows what they are picking. */
-  topicPreview: string;
-  createdAt: string;
-  status: BlogRequestStatus;
+  chat_id: string;
+  chat_title: string | null;
+  user_id: string;
+  user_name: string | null;
+  order_id: string | null;
+  request_id: string | null;
+  service_id: string | null;
+  service_request_id: string | null;
+  status: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
+
+/**
+ * The generated draft, exactly as GET /api/blog/requests/{id} returns it.
+ *
+ * Note `content` is a markdown string, not Editor.js blocks — it is converted
+ * by markdownToBlocks() before reaching the editor.
+ */
+export interface ApiDraft {
+  title: string | null;
+  slug: string | null;
+  excerpt: string | null;
+  heroImage: string | null;
+  /** Markdown. */
+  content: string | null;
+  mediaGallery: string[] | null;
+  author: string | null;
+  category: string | null;
+  tags: string[] | null;
+  featured: boolean | null;
+  status: string | null;
+  seoTitle: string | null;
+  metaDescription: string | null;
+  keywords: string[] | null;
+  readTime: number | null;
+}
+
+/** GET /api/blog/requests/{id} — a request plus its generated draft. */
+export interface BlogRequestDetail extends BlogRequest {
+  draft: ApiDraft | null;
+  draft_error: string | null;
+}
+
+/** Pagination block returned alongside the data. */
+export interface BlogRequestListMeta {
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+/** The envelope every endpoint on this backend wraps its payload in. */
+export interface ApiEnvelope<T> {
+  msg: {
+    data: T;
+    meta?: BlogRequestListMeta;
+  };
+  metadata?: {
+    request_id?: string;
+    success?: boolean;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Not implemented on the backend yet. Kept so the create/publish flow compiles
+// and so the shapes are agreed before those endpoints are built.
+// ---------------------------------------------------------------------------
 
 export type ChatRole = 'user' | 'assistant';
 
@@ -25,14 +86,13 @@ export interface ChatMessage {
   createdAt: string;
 }
 
-/** Response of GET /chats/{chatId} */
 export interface ChatTranscript {
   chatId: string;
   userId: string;
   messages: ChatMessage[];
 }
 
-/** An Editor.js block. Only the types the public renderer supports are allowed. */
+/** An Editor.js block. Only types the public renderer supports are allowed. */
 export interface EditorBlock {
   type: 'paragraph' | 'header' | 'list' | 'image' | 'quote' | 'embed';
   data: Record<string, any>;
@@ -42,7 +102,20 @@ export interface EditorContent {
   blocks: EditorBlock[];
 }
 
-/** Body of POST /blogs */
+/** What the AI prefill step hands to the create form. */
+export interface GeneratedDraft {
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: EditorContent;
+  tags: string[];
+  seo: {
+    title: string;
+    description: string;
+    keywords: string[];
+  };
+}
+
 export interface PublishBlogPayload {
   requestId: string;
   chatId: string;
@@ -63,23 +136,8 @@ export interface PublishBlogPayload {
   };
 }
 
-/** Response of POST /blogs */
 export interface PublishBlogResult {
   travizBlogId: string;
   ecostoryBlogId: string;
-  requestStatus: BlogRequestStatus;
-}
-
-/** What the AI prefill step hands back to the create form. */
-export interface GeneratedDraft {
-  title: string;
-  slug: string;
-  excerpt: string;
-  content: EditorContent;
-  tags: string[];
-  seo: {
-    title: string;
-    description: string;
-    keywords: string[];
-  };
+  requestStatus: string;
 }

@@ -428,6 +428,16 @@
     color: var(--warning-color);
   }
 
+  .status-requested {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: var(--warning-color);
+  }
+
+  .status-completed {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: var(--success-color);
+  }
+
   .status-in_progress {
     background-color: rgba(61, 90, 128, 0.1);
     color: var(--secondary-color);

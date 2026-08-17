@@ -1,159 +1,164 @@
-// Single access point for everything that comes from (or goes to) the Traviz backend.
-//
-// While TRAVIZ_API_BASE / TRAVIZ_API_KEY are unset this runs entirely on the mock
-// data in ./mockData. Setting both env vars switches every call to the live API —
-// no page or component needs to change.
-//
-// Server-side only. The API key must never reach the browser, so pages should call
-// these through an Astro API route or from frontmatter, never from a <script>.
+
 
 import type {
+  ApiEnvelope,
   BlogRequest,
-  BlogRequestStatus,
+  BlogRequestDetail,
   ChatTranscript,
   PublishBlogPayload,
   PublishBlogResult,
 } from './types';
-import { mockBlogRequests, mockChats } from './mockData';
 
-const API_BASE = import.meta.env.TRAVIZ_API_BASE;
-const API_KEY = import.meta.env.TRAVIZ_API_KEY;
+const DEFAULT_API_BASE = 'http://127.0.0.1:8000/api';
 
-/** Mock mode is the default until both env vars are provided. */
-export const USE_MOCK =
-  import.meta.env.TRAVIZ_USE_MOCK === 'true' || !API_BASE || !API_KEY;
+// import.meta.env only exists under Vite; optional chaining keeps this module
+// importable from plain Node (scripts, tests) where only process.env is present.
+export const API_BASE =
+  import.meta.env?.TRAVIZ_API_BASE ?? process.env.TRAVIZ_API_BASE ?? DEFAULT_API_BASE;
 
-/**
- * Status changes made during a mock session, keyed by request id.
- * Lets the create-blog flow be exercised end to end before Traviz exists.
- * Process memory only — resets on server restart, which is fine for dev.
- */
-const mockStatusOverrides = new Map<string, BlogRequestStatus>();
+const INTERNAL_API_KEY =
+  import.meta.env?.INTERNAL_API_KEY ?? process.env.INTERNAL_API_KEY;
 
-async function travizFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${API_KEY}`,
-      ...init.headers,
-    },
-  });
+/** The backend's documented maximum page size. */
+const PAGE_LIMIT = 100;
+
+async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    accept: 'application/json',
+    ...(init.headers as Record<string, string>),
+  };
+
+  // Every blog API call is authenticated with this header. Sent only when a key
+  // is configured, so local development against an unsecured backend still works.
+  if (INTERNAL_API_KEY) {
+    headers['X-Internal-Key'] = INTERNAL_API_KEY;
+  } else if (!API_BASE.includes('127.0.0.1') && !API_BASE.includes('localhost')) {
+    console.warn(
+      '[api] INTERNAL_API_KEY is not set — calling a non-local backend without authentication'
+    );
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
 
   if (!response.ok) {
     const body = await response.text().catch(() => '');
-    throw new Error(`Traviz ${init.method || 'GET'} ${path} failed: ${response.status} ${body}`);
+    throw new Error(`API ${init.method || 'GET'} ${path} failed: ${response.status} ${body}`);
   }
 
   return response.json() as Promise<T>;
 }
 
+/** Unwraps the { msg: { data, meta }, metadata: { success } } envelope. */
+function unwrap<T>(payload: ApiEnvelope<T>, path: string): T {
+  if (payload?.metadata?.success === false) {
+    throw new Error(`API ${path} returned success: false`);
+  }
+  if (!payload?.msg || payload.msg.data === undefined) {
+    throw new Error(`API ${path} returned an unexpected envelope`);
+  }
+  return payload.msg.data;
+}
+
 /**
- * GET /blog-requests
- * Returns newest first. Pass a status to filter, or omit for everything.
+ * GET /api/blog/requests
+ *
+ * Fetches every page and returns the requests newest first, exactly as the
+ * backend models them. Status filtering is deliberately not applied — the
+ * admin list currently shows everything.
  */
-export async function getBlogRequests(status?: BlogRequestStatus): Promise<BlogRequest[]> {
-  if (USE_MOCK) {
-    const requests = mockBlogRequests
-      .map((request) => ({
-        ...request,
-        status: mockStatusOverrides.get(request.id) ?? request.status,
-      }))
-      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+export async function getBlogRequests(): Promise<BlogRequest[]> {
+  const collected: BlogRequest[] = [];
+  let page = 1;
+  let totalPages = 1;
 
-    return status ? requests.filter((request) => request.status === status) : requests;
-  }
+  do {
+    const params = new URLSearchParams({ page: String(page), limit: String(PAGE_LIMIT) });
+    const path = `/blog/requests?${params}`;
 
-  const path = status ? `/blog-requests?status=${encodeURIComponent(status)}` : '/blog-requests';
-  return travizFetch<BlogRequest[]>(path);
+    const payload = await apiFetch<ApiEnvelope<BlogRequest[]>>(path);
+    collected.push(...unwrap(payload, path));
+
+    totalPages = payload.msg.meta?.total_pages ?? 1;
+    page += 1;
+  } while (page <= totalPages);
+
+  return collected.sort(
+    (a, b) => Date.parse(b.created_at ?? '') - Date.parse(a.created_at ?? '')
+  );
 }
 
-/** Convenience lookup for the create-blog prefill. */
-export async function getBlogRequest(id: string): Promise<BlogRequest | null> {
-  const requests = await getBlogRequests();
-  return requests.find((request) => request.id === id) ?? null;
-}
-
-/** GET /chats/{chatId} — the transcript the AI prefill summarises. */
-export async function getChat(chatId: string): Promise<ChatTranscript | null> {
-  if (USE_MOCK) {
-    return mockChats[chatId] ?? null;
-  }
-
+/**
+ * GET /api/blog/requests/{id}
+ *
+ * Returns the request plus its generated draft. Note the envelope differs from
+ * the list endpoint: `msg` IS the object here, with no `data` wrapper.
+ *
+ * The backend regenerates the draft on every call (currently ~7-8s), so this is
+ * deliberately only called when the admin opens a request, never for the list.
+ */
+export async function getBlogRequestDetail(id: string): Promise<BlogRequestDetail | null> {
   try {
-    return await travizFetch<ChatTranscript>(`/chats/${encodeURIComponent(chatId)}`);
+    const payload = await apiFetch<{ msg: BlogRequestDetail; metadata?: { success?: boolean } }>(
+      `/blog/requests/${encodeURIComponent(id)}`
+    );
+
+    if (payload?.metadata?.success === false) {
+      throw new Error('backend returned success: false');
+    }
+    if (!payload?.msg?.id) {
+      throw new Error('unexpected envelope');
+    }
+
+    return payload.msg;
   } catch (error) {
-    console.error('Failed to load Traviz chat', chatId, error);
+    console.error('[api] could not load blog request detail', id, error);
     return null;
   }
 }
 
 /**
- * POST /blogs
- * Traviz creates the blog, writes it to its own database and mirrors it into the
- * EcoStory database, then reports both ids back.
+ * The chat transcript a draft would be written from.
+ *
+ * Not implemented on the backend yet — there is no GET for a single chat, only
+ * POST /api/chat/get-or-create and /completions. Returns null on any failure so
+ * the create form still opens with a blank editor rather than erroring.
  */
-export async function publishBlog(payload: PublishBlogPayload): Promise<PublishBlogResult> {
-  if (USE_MOCK) {
-    mockStatusOverrides.set(payload.requestId, 'published');
-    console.info('[traviz:mock] publishBlog', payload.slug);
-
-    return {
-      travizBlogId: `mock_traviz_${payload.requestId}`,
-      ecostoryBlogId: `mock_ecostory_${payload.requestId}`,
-      requestStatus: 'published',
-    };
+export async function getChat(chatId: string): Promise<ChatTranscript | null> {
+  try {
+    const payload = await apiFetch<ApiEnvelope<ChatTranscript>>(
+      `/chat/${encodeURIComponent(chatId)}`
+    );
+    return unwrap(payload, 'chat');
+  } catch (error) {
+    console.warn('[api] chat transcript unavailable for', chatId, error);
+    return null;
   }
+}
 
-  return travizFetch<PublishBlogResult>('/blogs', {
+/** POST /api/blog/create — not implemented on the backend yet. */
+export async function publishBlog(payload: PublishBlogPayload): Promise<PublishBlogResult> {
+  return apiFetch<PublishBlogResult>('/blog/create', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
-/**
- * Marks a request as handled after its blog has been created.
- *
- * Phase 1: the live POST /blogs response reports the new status, so this
- * becomes unnecessary once Traviz owns the write.
- */
+/** Marks a request handled once its blog exists. Not implemented yet. */
 export async function markRequestPublished(
   id: string,
   meta: { slug?: string; title?: string } = {}
 ): Promise<void> {
-  if (USE_MOCK) {
-    mockStatusOverrides.set(id, 'published');
-    console.info('[traviz:mock] markRequestPublished', id, meta.slug);
-    return;
-  }
-
-  await travizFetch(`/blog-requests/${encodeURIComponent(id)}/complete`, {
+  await apiFetch(`/blog/requests/${encodeURIComponent(id)}/complete`, {
     method: 'POST',
     body: JSON.stringify(meta),
   });
 }
 
-/** Marks a request as rejected so it leaves the admin queue. */
+/** Removes a request from the queue. Not implemented yet. */
 export async function rejectBlogRequest(id: string, reason: string): Promise<void> {
-  if (USE_MOCK) {
-    mockStatusOverrides.set(id, 'rejected');
-    console.info('[traviz:mock] rejectBlogRequest', id, reason);
-    return;
-  }
-
-  await travizFetch(`/blog-requests/${encodeURIComponent(id)}/reject`, {
+  await apiFetch(`/blog/requests/${encodeURIComponent(id)}/reject`, {
     method: 'POST',
     body: JSON.stringify({ reason }),
   });
-}
-
-/** Count used for the sidebar badge. */
-export async function getPendingRequestCount(): Promise<number> {
-  try {
-    const requests = await getBlogRequests();
-    return requests.filter((request) => request.status === 'pending').length;
-  } catch (error) {
-    console.error('Failed to count pending blog requests', error);
-    return 0;
-  }
 }

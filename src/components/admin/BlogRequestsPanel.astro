@@ -13,29 +13,35 @@ interface Props {
 
 const { requests, loadError = null } = Astro.props;
 
-const statusCounts = {
-  all: requests.length,
-  pending: requests.filter((request) => request.status === 'pending').length,
-  in_progress: requests.filter((request) => request.status === 'in_progress').length,
-  published: requests.filter((request) => request.status === 'published').length,
-  rejected: requests.filter((request) => request.status === 'rejected').length,
-};
-
-const statusLabels: Record<BlogRequest['status'], string> = {
-  pending: 'Pending',
+// Status filtering is not wired up yet — the list shows everything the backend
+// returns. Only "requested" is emitted today; add filters once more statuses exist.
+const statusLabels: Record<string, string> = {
+  requested: 'Requested',
   in_progress: 'In Progress',
+  completed: 'Completed',
   published: 'Published',
   rejected: 'Rejected',
 };
 
-const formatDate = (value: string) =>
-  new Date(value).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+/** Falls back to the raw backend value so a new status is visible, not hidden. */
+const statusLabel = (status: string) => statusLabels[status] ?? status;
+
+/** Status values that still need action from an admin. */
+const isOpen = (status: string) => status === 'requested' || status === 'in_progress';
+
+const formatDate = (value: string | null) => {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.valueOf())
+    ? '—'
+    : parsed.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+};
 ---
 
 <div class="blog-requests-panel" id="blog-requests-panel">
@@ -51,19 +57,7 @@ const formatDate = (value: string) =>
     <div class="admin-card-header">
       <div class="status-filter">
         <button class="filter-btn active" data-request-filter="all">
-          All <span class="count">{statusCounts.all}</span>
-        </button>
-        <button class="filter-btn" data-request-filter="pending">
-          Pending <span class="count">{statusCounts.pending}</span>
-        </button>
-        <button class="filter-btn" data-request-filter="in_progress">
-          In Progress <span class="count">{statusCounts.in_progress}</span>
-        </button>
-        <button class="filter-btn" data-request-filter="published">
-          Published <span class="count">{statusCounts.published}</span>
-        </button>
-        <button class="filter-btn" data-request-filter="rejected">
-          Rejected <span class="count">{statusCounts.rejected}</span>
+          All <span class="count">{requests.length}</span>
         </button>
       </div>
 
@@ -93,25 +87,25 @@ const formatDate = (value: string) =>
           {requests.map((request) => (
             <tr
               data-status={request.status}
-              data-search={`${request.topicPreview} ${request.requestedByName}`.toLowerCase()}
+              data-search={`${request.chat_title ?? ''} ${request.user_name ?? ''}`.toLowerCase()}
               class={request.status === 'rejected' ? 'inactive-row' : ''}
             >
               <td>
                 <div class="topic-cell">
-                  <span class="topic-text">{request.topicPreview}</span>
-                  <span class="chat-ref">chat {request.chatId}</span>
+                  <span class="topic-text">{request.chat_title || 'Untitled chat'}</span>
+                  <span class="chat-ref">chat {request.chat_id}</span>
                 </div>
               </td>
-              <td>{request.requestedByName}</td>
-              <td>{formatDate(request.createdAt)}</td>
+              <td>{request.user_name || 'Unknown user'}</td>
+              <td>{formatDate(request.created_at)}</td>
               <td>
                 <span class={`status-badge status-${request.status}`}>
-                  {statusLabels[request.status]}
+                  {statusLabel(request.status)}
                 </span>
               </td>
               <td>
                 <div class="action-buttons">
-                  {(request.status === 'pending' || request.status === 'in_progress') && (
+                  {isOpen(request.status) ? (
                     <>
                       <a
                         href={`/admin/blogs/new?requestId=${request.id}`}
@@ -122,14 +116,14 @@ const formatDate = (value: string) =>
                       <button
                         class="admin-button admin-button-secondary admin-button-sm reject-request-btn"
                         data-id={request.id}
-                        data-topic={request.topicPreview}
+                        data-topic={request.chat_title || 'Untitled chat'}
                       >
                         Reject
                       </button>
                     </>
+                  ) : (
+                    <span class="muted">{statusLabel(request.status)}</span>
                   )}
-                  {request.status === 'published' && <span class="muted">Blog created</span>}
-                  {request.status === 'rejected' && <span class="muted">Rejected</span>}
                 </div>
               </td>
             </tr>
