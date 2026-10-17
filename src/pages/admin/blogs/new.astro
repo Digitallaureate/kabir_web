@@ -25,7 +25,13 @@ const requestId = Astro.url.searchParams.get('requestId');
 let draft: FormDraft | null = null;
 let requestedByName = '';
 let chatId = '';
+let userId = '';
+let chatName = '';
 let prefillError: string | null = null;
+
+// Public origin for the blog URL sent back to the backend. Falls back to the
+// request origin so this still works when running locally.
+const siteOrigin = (Astro.site?.origin ?? new URL(Astro.request.url).origin).replace(/\/$/, '');
 
 if (requestId) {
   try {
@@ -36,6 +42,8 @@ if (requestId) {
     } else {
       requestedByName = detail.user_name || 'Unknown user';
       chatId = detail.chat_id;
+      userId = detail.user_id;
+      chatName = detail.chat_title || 'Untitled chat';
 
       if (detail.draft) {
         draft = mapDraft(detail.draft);
@@ -113,6 +121,9 @@ if (requestId) {
     <form id="blog-form" class="blog-form">
       <input type="hidden" id="request-id" value={requestId ?? ''}>
       <input type="hidden" id="request-chat-id" value={chatId}>
+      <input type="hidden" id="request-user-id" value={userId}>
+      <input type="hidden" id="request-chat-name" value={chatName}>
+      <input type="hidden" id="site-origin" value={siteOrigin}>
       <div class="form-main">
         <div class="admin-card">
           <div class="admin-card-header">
@@ -1807,23 +1818,66 @@ if (requestId) {
         // Save to Firestore
         await addDoc(collection(db, "blogs"), blogData);
 
-        // Take the originating request out of the admin queue.
-        // In phase 1 this is replaced by the single POST /blogs call to Traviz,
-        // which writes both databases and flips the status itself.
+        // Record the published blog against its originating request. The post is
+        // already safe in Firestore at this point, so a failure here is reported
+        // but never discards the admin's work.
+        let backendWarning = '';
+
         if (requestId) {
+          const siteOrigin =
+            (document.getElementById('site-origin') as HTMLInputElement)?.value ||
+            window.location.origin;
+
           try {
-            await fetch('/api/traviz/complete', {
+            const response = await fetch('/api/traviz/publish', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ requestId, slug, title })
+              body: JSON.stringify({
+                requestId,
+                uid: (document.getElementById('request-user-id') as HTMLInputElement)?.value || '',
+                blogUrl: `${siteOrigin}/blogs/${slug}`,
+                chatId: chatId || '',
+                chatName:
+                  (document.getElementById('request-chat-name') as HTMLInputElement)?.value || '',
+                title,
+                slug,
+                excerpt,
+                heroImage: heroImageUrl || null,
+                content: content?.value ?? null,
+                author,
+                category,
+                tags,
+                featured,
+                status,
+                seoTitle,
+                metaDescription: seoDescription,
+                keywords: seoKeywordsArray,
+                readTime: Math.ceil(wordCount / 200)
+              })
             });
+
+            if (!response.ok) {
+              const body = await response.json().catch(() => ({}));
+              backendWarning = body.error || `Backend returned ${response.status}`;
+            }
           } catch (error) {
-            console.error('Blog saved, but the Traviz request could not be updated', error);
+            backendWarning = error instanceof Error ? error.message : 'Network error';
+          }
+
+          if (backendWarning) {
+            console.error('Blog saved, but the backend was not updated:', backendWarning);
           }
         }
 
         // Show success and redirect
-        showNotification(status === 'published' ? 'Blog post published successfully!' : 'Blog post saved as draft!');
+        if (backendWarning) {
+          alert(
+            `The blog was saved successfully, but the backend could not be updated:\n\n${backendWarning}\n\n` +
+            `The request will still show as open in the Requested Blog list.`
+          );
+        } else {
+          showNotification(status === 'published' ? 'Blog post published successfully!' : 'Blog post saved as draft!');
+        }
 
         setTimeout(() => {
           window.location.href = requestId

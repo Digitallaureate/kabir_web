@@ -136,6 +136,34 @@ export interface PublishBlogPayload {
   };
 }
 
+/**
+ * Body of POST /api/blog/requests/{request_id}/blog.
+ * Mirrors the backend's CreateBlogRequest schema field for field.
+ */
+export interface CreateBlogPayload {
+  /** App user who asked for the blog — the request's user_id. */
+  uid: string;
+  /** Public URL of the published post. */
+  blogUrl: string;
+  chatId: string;
+  chatName: string;
+  title: string;
+  slug: string | null;
+  excerpt: string | null;
+  heroImage: string | null;
+  /** Stringified Editor.js document, same as stored in Firestore. */
+  content: string | null;
+  author: string | null;
+  category: string | null;
+  tags: string[];
+  featured: boolean;
+  status: string;
+  seoTitle: string | null;
+  metaDescription: string | null;
+  keywords: string[];
+  readTime: number | null;
+}
+
 export interface PublishBlogResult {
   travizBlogId: string;
   ecostoryBlogId: string;
